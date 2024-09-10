@@ -6,10 +6,7 @@ import com.example.prac.model.authEntity.AuthenticationService;
 import com.example.prac.model.authEntity.RegisterRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -23,6 +20,10 @@ public class AuthController {
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> registerUser(@RequestBody AuthenticationRequest request){
         return ResponseEntity.ok(authenticationService.authenticate(request));
+    }
+    @GetMapping("/verify-token")
+    public ResponseEntity<?> checkToken() {
+        return ResponseEntity.ok("Token is valid");
     }
 
 }

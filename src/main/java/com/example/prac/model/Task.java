@@ -25,9 +25,6 @@ public class Task {
     @Column(nullable = false, length = 20)
     private TaskStatus status;
 
-    @Column(nullable = false)
-    private Integer priority;
-
     @Column
     private LocalDateTime deadline;
 

@@ -46,9 +46,6 @@ public class TaskService {
                 case "status":
                     task.setStatus(TaskStatus.valueOf((String) value));
                     break;
-                case "priority":
-                    task.setPriority((Integer) value);
-                    break;
                 case "deadline":
                     task.setDeadline(LocalDateTime.parse((String) value));
                     break;

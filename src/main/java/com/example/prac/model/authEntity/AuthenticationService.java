@@ -30,7 +30,7 @@ public class AuthenticationService {
                 .build();
     }
 
-    public AuthenticationResponse authenticate(AuthenticationRequest request){
+    public AuthenticationResponse authenticate(AuthenticationRequest request) {
         System.out.println("1");
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(

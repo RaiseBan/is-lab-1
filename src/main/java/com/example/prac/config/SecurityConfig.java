@@ -29,6 +29,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()  // Публичные страницы
+                        .requestMatchers("/api/v1/auth/verify-token").authenticated()
                         .anyRequest().authenticated()  // Все остальные запросы требуют аутентификации
                 )
                 .sessionManagement(session -> session
