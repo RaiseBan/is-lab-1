@@ -18,15 +18,15 @@ public class Task {
     @Column(nullable = false, length = 255)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private TaskStatus status;
+    @Column(nullable = false)
+    private LocalDateTime startTime;
 
-    @Column
-    private LocalDateTime deadline;
+    @Column(nullable = false)
+    private LocalDateTime endTime;
+
+    @Column(nullable = false, length = 7)
+    private String color;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

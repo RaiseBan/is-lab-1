@@ -31,13 +31,14 @@ public class TaskController {
     }
     @PostMapping
     public ResponseEntity<TaskDTOResponse> createTask(@RequestBody TaskDTORequest taskDTORequest){
+        System.out.println(taskDTORequest);
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User user = (User) authentication.getPrincipal();
         Task task = new Task();
         task.setTitle(taskDTORequest.getTitle());
-        task.setDescription(taskDTORequest.getDescription());
-        task.setStatus(taskDTORequest.getStatus());
-        task.setDeadline(taskDTORequest.getDeadline());
+        task.setStartTime(taskDTORequest.getStartTime());
+        task.setEndTime(taskDTORequest.getEndTime());
+        task.setColor(taskDTORequest.getColor());
         task.setUser(user);
 
         Task createdTask = taskService.save(task);
@@ -45,9 +46,9 @@ public class TaskController {
         TaskDTOResponse responseDTO = new TaskDTOResponse();
         responseDTO.setId(createdTask.getId());
         responseDTO.setTitle(createdTask.getTitle());
-        responseDTO.setDescription(createdTask.getDescription());
-        responseDTO.setStatus(createdTask.getStatus());
-        responseDTO.setDeadline(createdTask.getDeadline());
+        responseDTO.setStartTime(createdTask.getStartTime());
+        responseDTO.setEndTime(createdTask.getEndTime());
+        responseDTO.setColor(createdTask.getColor());
 
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
@@ -68,9 +69,9 @@ public class TaskController {
         TaskDTOResponse responseDTO = new TaskDTOResponse();
         responseDTO.setId(updatedTask.getId());
         responseDTO.setTitle(updatedTask.getTitle());
-        responseDTO.setDescription(updatedTask.getDescription());
-        responseDTO.setStatus(updatedTask.getStatus());
-        responseDTO.setDeadline(updatedTask.getDeadline());
+        responseDTO.setStartTime(updatedTask.getStartTime());
+        responseDTO.setEndTime(updatedTask.getEndTime());
+        responseDTO.setColor(updatedTask.getColor());
 
         return ResponseEntity.ok().body(responseDTO);
     }
@@ -83,9 +84,9 @@ public class TaskController {
             TaskDTOResponse dto = new TaskDTOResponse();
             dto.setId(task.getId());
             dto.setTitle(task.getTitle());
-            dto.setDescription(task.getDescription());
-            dto.setStatus(task.getStatus());
-            dto.setDeadline(task.getDeadline());
+            dto.setStartTime(task.getStartTime());
+            dto.setEndTime(task.getEndTime());
+            dto.setColor(task.getColor());
             return dto;
         }).collect(Collectors.toList());
 

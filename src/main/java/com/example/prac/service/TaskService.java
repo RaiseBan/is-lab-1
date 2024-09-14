@@ -2,7 +2,6 @@ package com.example.prac.service;
 
 import com.example.prac.errorHandler.ResourceNotFoundException;
 import com.example.prac.model.Task;
-import com.example.prac.model.TaskStatus;
 import com.example.prac.model.User;
 import com.example.prac.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,14 +39,14 @@ public class TaskService {
                 case "title":
                     task.setTitle((String) value);
                     break;
-                case "description":
-                    task.setDescription((String) value);
+                case "start":
+                    task.setStartTime((LocalDateTime) value);
                     break;
-                case "status":
-                    task.setStatus(TaskStatus.valueOf((String) value));
+                case "end":
+                    task.setEndTime((LocalDateTime) value);
                     break;
-                case "deadline":
-                    task.setDeadline(LocalDateTime.parse((String) value));
+                case "color":
+                    task.setColor((String) value);
                     break;
             }
         });

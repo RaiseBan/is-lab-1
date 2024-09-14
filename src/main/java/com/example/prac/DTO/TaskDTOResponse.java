@@ -1,6 +1,5 @@
 package com.example.prac.DTO;
 
-import com.example.prac.model.TaskStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -9,8 +8,8 @@ import java.time.LocalDateTime;
 public class TaskDTOResponse {
     private Long id;
     private String title;
-    private String description;
-    private TaskStatus status;
-    private LocalDateTime deadline;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
+    private String color;
 
 }
