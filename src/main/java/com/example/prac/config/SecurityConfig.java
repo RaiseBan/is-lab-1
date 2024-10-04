@@ -13,8 +13,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @EnableWebSecurity
@@ -22,6 +20,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -29,7 +28,13 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()  // Публичные страницы
+                        .requestMatchers("/ws/music/**").permitAll()
                         .requestMatchers("/api/v1/auth/verify-token").authenticated()
+
+                        // Настраиваем доступ к нужным эндпоинтам
+                        .requestMatchers("/api/admin-requests/request").hasRole("USER")  // Только для аутентифицированных с ролью USER
+                        .requestMatchers("/api/admin-requests/**").hasRole("ADMIN")  // Остальные запросы только для ADMIN
+
                         .anyRequest().authenticated()  // Все остальные запросы требуют аутентификации
                 )
                 .sessionManagement(session -> session
@@ -40,6 +45,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

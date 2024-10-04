@@ -1,4 +1,4 @@
-package com.example.prac.model.authEntity;
+package com.example.prac.DTO.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

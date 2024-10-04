@@ -1,5 +1,6 @@
-package com.example.prac.model;
+package com.example.prac.model.authEntity;
 
+import com.example.prac.model.dataEntity.MusicBand;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -16,13 +17,14 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Table(name = "users")
+@ToString
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, length = 100)
-    private String email;
+    private String username;
 
     @Column(nullable = false, length = 255)
     private String password;
@@ -31,8 +33,8 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 20)
     private Role role;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Task> tasks;
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<MusicBand> musicBands;
 
 
     @Override
@@ -47,7 +49,7 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email;
+        return username;
     }
 
     @Override
