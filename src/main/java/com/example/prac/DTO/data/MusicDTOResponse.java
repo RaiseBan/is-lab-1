@@ -5,6 +5,7 @@ import lombok.Data;
 
 @Data
 public class MusicDTOResponse {
+    private Long id;
     private String name;
     private CoordinatesDTOResponse coordinates;
     private String genre;

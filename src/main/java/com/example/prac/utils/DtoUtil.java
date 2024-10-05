@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 public class DtoUtil {
     public static MusicDTOResponse convertToResponse(MusicBand musicBand) {
         MusicDTOResponse response = new MusicDTOResponse();
+        response.setId(musicBand.getId());
         response.setName(musicBand.getName());
 
         CoordinatesDTOResponse coordinatesResponse = new CoordinatesDTOResponse();

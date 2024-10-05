@@ -3,6 +3,7 @@ package com.example.prac.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -29,9 +30,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()  // Публичные страницы
                         .requestMatchers("/ws/music/**").permitAll()
-                        .requestMatchers("/api/v1/auth/verify-token").authenticated()
 
-                        // Настраиваем доступ к нужным эндпоинтам
+                        // Разрешаем доступ к /api/music/ (GET) всем пользователям
+                        .requestMatchers(HttpMethod.GET, "/api/music").permitAll()
+
+                        // Закрываем доступ ко всем остальным путям под /api/music/** для неаутентифицированных
+                        .requestMatchers("/api/music/**").authenticated()
+
+                        .requestMatchers("/api/v1/auth/verify-token").authenticated()
+                        // Настраиваем доступ к другим эндпоинтам
                         .requestMatchers("/api/admin-requests/request").hasRole("USER")  // Только для аутентифицированных с ролью USER
                         .requestMatchers("/api/admin-requests/**").hasRole("ADMIN")  // Остальные запросы только для ADMIN
 
@@ -45,6 +52,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
