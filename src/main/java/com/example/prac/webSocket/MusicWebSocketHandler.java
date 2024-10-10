@@ -28,10 +28,7 @@ public class MusicWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, org.springframework.web.socket.CloseStatus status) throws Exception {
         sessions.remove(session);
-    }
-
-    // Метод для отправки обновлений в зависимости от типа операции
-    public void sendUpdate(String type, Object payload) throws IOException {
+    }    public void sendUpdate(String type, Object payload) throws IOException {
         Map<String, Object> message = new HashMap<>();
         message.put("type", type);
 

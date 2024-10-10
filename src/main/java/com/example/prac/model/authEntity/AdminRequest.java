@@ -4,21 +4,24 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.util.List;
-@Data
+
 @Entity
+@Table(name = "admin_request")
+@Data
 public class AdminRequest {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, unique = true)
     private Long id;
 
-    // Связь с пользователем, который сделал запрос
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "requester_id")
-    private User requester; // Пользователь, который запросил админку
+    @JoinColumn(name = "requester_id", referencedColumnName = "id")
+    private User requester;
 
-    private boolean approvedByAll; // Флаг, когда все админы одобрят
+    @Column(name = "approved_by_all", nullable = false)
+    private boolean approvedByAll;
 
-    // Связь с администраторами, которые одобрили
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "admin_request_approved_by",

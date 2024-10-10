@@ -12,23 +12,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
-    private final AuthenticationService authenticationService;
-
-    // Регистрация пользователя
-    @PostMapping("/register")
+    private final AuthenticationService authenticationService;    @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> registerUser(@RequestBody RegisterRequest request) {
         AuthenticationResponse authenticationResponse = authenticationService.register(request);
-        return ResponseEntity.ok(authenticationResponse);
-    }
-
-    // Аутентификация (логин)
-    @PostMapping("/authenticate")
+        return ResponseEntity.ok().build();
+    }    @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticateUser(@RequestBody AuthenticationRequest request) {
         return ResponseEntity.ok(authenticationService.authenticate(request));
-    }
-
-    // Проверка валидности токена
-    @GetMapping("/verify-token")
+    }    @GetMapping("/verify-token")
     public ResponseEntity<?> checkToken() {
         return ResponseEntity.ok("Token is valid");
     }

@@ -11,14 +11,14 @@ public class Coordinates {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, unique = true)
+    @Column(name = "id", nullable = false, unique = true)
     private long id;
 
     @Min(value = -599, message = "X must be greater than -599")
-    @Column(nullable = false)
-    private int x;  // Значение поля должно быть больше -599
+    @Column(name = "x", nullable = false)
+    private int x;
 
     @NotNull(message = "Y cannot be null")
-    @Column(nullable = false)
+    @Column(name = "y", nullable = false)
     private double y;
 }

@@ -27,8 +27,9 @@ import java.security.NoSuchAlgorithmException;
 public class ApplicationConfig {
 
     private final UserRepository userRepository;
+
     @Bean
-    public UserDetailsService userDetailsService(){
+    public UserDetailsService userDetailsService() {
         return new UserDetailsService() {
             @Override
             public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -36,8 +37,9 @@ public class ApplicationConfig {
             }
         };
     }
+
     @Bean
-    public AuthenticationProvider authenticationProvider(){
+    public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
         authenticationProvider.setUserDetailsService(userDetailsService());
         authenticationProvider.setPasswordEncoder(passwordEncoder());
@@ -48,19 +50,20 @@ public class ApplicationConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new PasswordEncoder() {
             @Override
             public String encode(CharSequence rawPassword) {
                 try {
-                    MessageDigest md = MessageDigest.getInstance("MD5"); // Используем MD5
+                    MessageDigest md = MessageDigest.getInstance("MD5");
                     byte[] digest = md.digest(rawPassword.toString().getBytes());
                     StringBuilder sb = new StringBuilder();
                     for (byte b : digest) {
-                        sb.append(String.format("%02x", b)); // Преобразуем каждый байт в шестнадцатеричный формат
+                        sb.append(String.format("%02x", b));
                     }
-                    return sb.toString(); // Возвращаем строку, представляющую MD5-хэш
+                    return sb.toString();
                 } catch (NoSuchAlgorithmException e) {
                     throw new RuntimeException("Error while hashing password", e);
                 }
@@ -68,7 +71,7 @@ public class ApplicationConfig {
 
             @Override
             public boolean matches(CharSequence rawPassword, String encodedPassword) {
-                return encode(rawPassword).equals(encodedPassword); // Сравниваем хэшированный пароль
+                return encode(rawPassword).equals(encodedPassword);
             }
         };
     }

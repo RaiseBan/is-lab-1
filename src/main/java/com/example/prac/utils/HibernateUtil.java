@@ -12,10 +12,7 @@ public class HibernateUtil {
     @Autowired
     public HibernateUtil(SessionFactory sessionFactory) {
         this.sessionFactory = sessionFactory;
-    }
-
-    // Метод для закрытия фабрики сессий
-    public void shutdown() {
+    }    public void shutdown() {
         if (sessionFactory != null) {
             sessionFactory.close();
         }

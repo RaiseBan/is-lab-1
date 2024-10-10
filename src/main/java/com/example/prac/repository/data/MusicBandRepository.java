@@ -1,12 +1,15 @@
 package com.example.prac.repository.data;
 
 import com.example.prac.model.dataEntity.MusicBand;
+import jakarta.persistence.ParameterMode;
+import jakarta.persistence.StoredProcedureQuery;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.sql.CallableStatement;
 import java.util.List;
 
 @Repository
@@ -74,5 +77,44 @@ public class MusicBandRepository {
             e.printStackTrace();
             return null;
         }
+    }    public List<Object[]> getMusicBandCountByCreationDate() {
+        try (Session session = sessionFactory.openSession()) {
+            return session.createNativeQuery("SELECT * FROM get_musicband_count_by_creation_date()")
+                    .list();
+        }
+    }    public Long countMusicBandsWithLabelMoreThan(String labelThreshold) {
+        try (Session session = sessionFactory.openSession()) {
+            return ((Number) session.createNativeQuery("SELECT count_musicbands_with_label_more_than(:labelThreshold)")
+                    .setParameter("labelThreshold", labelThreshold)
+                    .getSingleResult()).longValue();
+        }
+    }    public List<MusicBand> findMusicBandsByDescriptionSubstring(String substring) {
+        try (Session session = sessionFactory.openSession()) {
+            return session.createNamedQuery("MusicBand.findByDescriptionSubstring", MusicBand.class)
+                    .setParameter("substring", substring)
+                    .getResultList();
+        }
+    }    public void addSingleToMusicBand(Long bandId, int singlesCount) {
+        try (Session session = sessionFactory.openSession()) {
+            StoredProcedureQuery query = session.createStoredProcedureQuery("add_single_to_musicband");
+            query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(2, Integer.class, ParameterMode.IN);
+            query.setParameter(1, bandId);
+            query.setParameter(2, singlesCount);
+            query.execute();
+        }
+    }    public void removeParticipantFromMusicBand(long bandId) {
+        try (Session session = sessionFactory.openSession()) {
+            StoredProcedureQuery query = session.createStoredProcedureQuery("remove_participant_from_musicband");
+            query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
+            query.setParameter(1, bandId);
+            query.execute();
+        }
+
+
     }
+
+
+
+
 }

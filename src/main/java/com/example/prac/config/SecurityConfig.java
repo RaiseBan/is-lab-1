@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -25,35 +26,34 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)  // Отключаем CSRF
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()  // Публичные страницы
+                        // Доступ к статическим ресурсам
+                        .requestMatchers("/", "/static/**", "/index.html").permitAll()
+                        // Доступ к API
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/ws/music/**").permitAll()
-
-                        // Разрешаем доступ к /api/music/ (GET) всем пользователям
+                        .requestMatchers("/ws/admin/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/music").permitAll()
-
-                        // Закрываем доступ ко всем остальным путям под /api/music/** для неаутентифицированных
                         .requestMatchers("/api/music/**").authenticated()
 
-                        .requestMatchers("/api/v1/auth/verify-token").authenticated()
-                        // Настраиваем доступ к другим эндпоинтам
-                        .requestMatchers("/api/admin-requests/request").hasRole("USER")  // Только для аутентифицированных с ролью USER
-                        .requestMatchers("/api/admin-requests/**").hasRole("ADMIN")  // Остальные запросы только для ADMIN
+                        .requestMatchers("/api/v1/special/**").permitAll()
+                        .requestMatchers("/api/v1/special/add-single").authenticated()
+                        .requestMatchers("/api/v1/special/remove-participant").authenticated()
 
-                        .anyRequest().authenticated()  // Все остальные запросы требуют аутентификации
-                )
+                        .requestMatchers("/api/v1/auth/verify-token").authenticated()
+                        .requestMatchers("/api/admin-requests/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin-requests/request").hasAuthority("ROLE_USER")
+                        // Разрешаем все остальные запросы, если они не аутентифицированы
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // Указываем, что приложение stateless (нет сессий)
-                )
-                .authenticationProvider(authenticationProvider)  // Устанавливаем кастомный провайдер для аутентификации
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);  // Добавляем JWT фильтр перед стандартным фильтром логина
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

@@ -14,19 +14,19 @@ public class Album {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, unique = true)
+    @Column(name = "id", nullable = false, unique = true)
     private long id;
 
     @NotBlank(message = "Name cannot be null or empty")
-    @Column(nullable = false)
-    private String name;  // Поле не может быть null, строка не может быть пустой
+    @Column(name = "name", nullable = false)
+    private String name;
 
     @Min(value = 1, message = "Tracks count must be greater than 0")
-    @Column(nullable = false)
-    private int tracks;  // Значение должно быть больше 0
+    @Column(name = "tracks", nullable = false)
+    private int tracks;
 
     @NotNull(message = "Length cannot be null")
     @Min(value = 1, message = "Length must be greater than 0")
-    @Column(nullable = false)
-    private Integer length;  // Поле не может быть null и значение должно быть больше 0
+    @Column(name = "length", nullable = false)
+    private Integer length;
 }

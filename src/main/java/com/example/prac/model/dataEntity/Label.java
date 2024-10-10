@@ -17,5 +17,4 @@ public class Label {
 
     @NotBlank(message = "Name cannot be null or empty")
     @Column(nullable = false)
-    private String name;  // Поле не может быть null
-}
+    private String name;}

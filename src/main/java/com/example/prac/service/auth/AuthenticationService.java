@@ -38,8 +38,10 @@ public class AuthenticationService {
 
         userRepository.save(user);
         var token = jwtService.generateToken(user);
+        Role role =  user.getRole();
         return AuthenticationResponse.builder()
                 .token(token)
+                .role(role)
                 .build();
     }
 
@@ -52,8 +54,10 @@ public class AuthenticationService {
         );
         var user = userRepository.findByUsername(request.getUsername()).orElseThrow(() -> new UsernameNotFoundException("user not found"));
         var token = jwtService.generateToken(user);
+        Role role =  user.getRole();
         return AuthenticationResponse.builder()
                 .token(token)
+                .role(role)
                 .build();
     }
 }

@@ -14,8 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -24,53 +23,49 @@ import java.util.stream.Collectors;
 public class AdminRequestController {
 
     private final AdminRequestService adminRequestService;
-    private final AuthenticationService authenticationService; // Для обновления роли пользователя
-    private final AdminRequestMapper adminRequestMapper;
-
-    // 1. Создание запроса на админку
-    @PostMapping("/request")
+    private final AuthenticationService authenticationService;    private final AdminRequestMapper adminRequestMapper;    @PostMapping("/request")
     public ResponseEntity<String> requestAdmin() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        User currentUser = (User) authentication.getPrincipal(); // Получаем текущего пользователя
-
-        // Создаем новый объект AdminRequest
-        AdminRequest adminRequest = new AdminRequest();
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                User currentUser = (User) authentication.getPrincipal();        AdminRequest adminRequest = new AdminRequest();
         adminRequest.setRequester(currentUser);
-        adminRequest.setApprovedByAll(false); // Изначально не одобрено всеми
-        adminRequest.setApprovedBy(new ArrayList<>()); // Список пуст
-
-        if (adminRequestService.createAdminRequest(adminRequest)) {
+        adminRequest.setApprovedByAll(false);        adminRequest.setApprovedBy(new ArrayList<>());                if (adminRequestService.createAdminRequest(adminRequest)) {
             return ResponseEntity.status(HttpStatus.CREATED).body("Запрос на админку создан.");
         } else {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Запрос уже был отправлен.");
         }
     }
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getAdminRequestStatus() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = (User) authentication.getPrincipal();
+        Optional<AdminRequest> existingRequest = adminRequestService.findByRequester(currentUser);
 
+        Map<String, Object> response = new HashMap<>();
 
-    // 2. Просмотр всех запросов (только для админов)
-    @GetMapping("/all")
+        if (existingRequest.isPresent()) {
+            response.put("status", existingRequest.get().isApprovedByAll() ? "approved" : "pending");
+            response.put("message", existingRequest.get().isApprovedByAll() ? "You are now an admin!" : "Your request is being processed...");
+        } else {
+            response.put("status", "none");
+        }
+
+        return ResponseEntity.ok(response);
+    }    @GetMapping("/all")
     public ResponseEntity<List<AdminRequestDTO>> getAllRequests() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User currentUser = (User) authentication.getPrincipal();
-        System.out.println(currentUser.getAuthorities());
-        if (currentUser.getAuthorities().stream()
+                if (currentUser.getAuthorities().stream()
                 .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ADMIN"))) {
-            System.out.println("jhello");
-            List<AdminRequest> requests = adminRequestService.getAllAdminRequests();
-            System.out.println("gg");
-            List<AdminRequestDTO> requestDTOs = requests.stream()
+                        List<AdminRequest> requests = adminRequestService.getAllAdminRequests();
+                        List<AdminRequestDTO> requestDTOs = requests.stream()
                     .map(adminRequestMapper::toDTO)
                     .toList();
-            System.out.println(12);
-            return ResponseEntity.ok(requestDTOs);
+                        return ResponseEntity.ok(requestDTOs);
         } else {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-    }
-
-    // 3. Одобрение запроса админом
-    @PostMapping("/{id}/approve")
-    public ResponseEntity<String> approveRequest(@PathVariable Long id) {
+    }    @PostMapping("/{id}/approve")
+    public ResponseEntity<String> approveRequest(@PathVariable Long id) throws Exception {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User currentUser = (User) authentication.getPrincipal();
 
@@ -87,10 +82,7 @@ public class AdminRequestController {
         } else {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-    }
-
-    // 4. Получение информации по конкретному запросу
-    @GetMapping("/{id}")
+    }    @GetMapping("/{id}")
     public ResponseEntity<AdminRequest> getRequestById(@PathVariable Long id) {
         AdminRequest adminRequest = adminRequestService.getAdminRequestById(id);
         if (adminRequest != null) {

@@ -1,6 +1,8 @@
 package com.example.prac.service.data;
 
 import com.example.prac.DTO.data.MusicDTORequest;
+import com.example.prac.DTO.data.MusicDTOResponse;
+import com.example.prac.errorHandler.ResourceNotFoundException;
 import com.example.prac.model.authEntity.User;
 import com.example.prac.model.dataEntity.MusicBand;
 import com.example.prac.model.dataEntity.MusicGenre;
@@ -15,23 +17,25 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
 public class MusicService {
 
     private final MusicBandRepository musicBandRepository;
-    private final MusicWebSocketHandler musicWebSocketHandler;
-
-    // Сохранение объекта MusicBand
-    public MusicBand saveMusicBand(MusicDTORequest musicDTORequest, User user) {
+    private final MusicWebSocketHandler musicWebSocketHandler;    public MusicBand saveMusicBand(MusicDTORequest musicDTORequest, User user) {
         try {
-            System.out.println("1g");
-            MusicBand musicBand = new MusicBand();
+                        MusicBand musicBand = new MusicBand();
             musicBand.setName(musicDTORequest.getName());
             musicBand.setCoordinates(musicDTORequest.getCoordinates());
-            musicBand.setGenre(musicDTORequest.getGenre() != null ? MusicGenre.valueOf(musicDTORequest.getGenre()) : null);
-            musicBand.setNumberOfParticipants(musicDTORequest.getNumberOfParticipants());
+            try {
+                musicBand.setGenre(MusicGenre.valueOf(musicDTORequest.getGenre()));
+            }catch (Exception e){
+                musicBand.setGenre(null);
+            }
+
+                        musicBand.setNumberOfParticipants(musicDTORequest.getNumberOfParticipants());
             musicBand.setSinglesCount(musicDTORequest.getSinglesCount());
             musicBand.setDescription(musicDTORequest.getDescription());
             musicBand.setBestAlbum(musicDTORequest.getBestAlbum());
@@ -41,49 +45,36 @@ public class MusicService {
             musicBand.setOwner(user);
             musicBand.setCreatedBy(user);
 
-
-            musicBandRepository.save(musicBand);
-            musicWebSocketHandler.sendUpdate("create", DtoUtil.convertToResponse(musicBand));
+                        musicBandRepository.save(musicBand);
+                        musicWebSocketHandler.sendUpdate("create", DtoUtil.convertToResponse(musicBand));
             return musicBand;
         } catch (HibernateException e) {
             throw new RuntimeException("Failed to save music band", e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    // Получение списка всех MusicBand
-    public List<MusicBand> getAllMusicBands() {
+    }    public List<MusicBand> getAllMusicBands() {
         try {
             return musicBandRepository.findAll();
         } catch (HibernateException e) {
             throw new RuntimeException("Failed to fetch all music bands", e);
         }
-    }
-
-    // Получение MusicBand по ID
-    public MusicBand getMusicBandById(long id) {
+    }    public MusicBand getMusicBandById(long id) {
         try {
             MusicBand musicBand = musicBandRepository.findById(id);
             if (musicBand == null) {
                 throw new IllegalArgumentException("MusicBand with id " + id + " not found");
             }
             return musicBand;
-        } catch (HibernateException e) {
-            throw new RuntimeException("Failed to fetch music band by id", e);
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("no such MusicBand");
         }
-    }
-
-    // Обновление MusicBand
-    @Transactional
+    }    @Transactional
     public MusicBand updateMusicBand(MusicBand musicBand, MusicDTORequest musicDTORequest, User user) {
         try {
             if (musicBand == null) {
                 throw new IllegalArgumentException("MusicBand with id not found");
-            }
-
-            // Обновляем только допустимые поля
-            musicBand.setName(musicDTORequest.getName());
+            }            musicBand.setName(musicDTORequest.getName());
             musicBand.setCoordinates(musicDTORequest.getCoordinates());
             musicBand.setGenre(musicDTORequest.getGenre() != null ? MusicGenre.valueOf(musicDTORequest.getGenre()) : null);
             musicBand.setNumberOfParticipants(musicDTORequest.getNumberOfParticipants());
@@ -104,10 +95,7 @@ public class MusicService {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    // Удаление MusicBand по ID
-    public void deleteMusicBandById(long id) {
+    }    public void deleteMusicBandById(long id) {
         try {
             MusicBand musicBand = musicBandRepository.findById(id);
             if (musicBand == null) {
@@ -120,5 +108,22 @@ public class MusicService {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }    public List<Object[]> getMusicBandCountByCreationDate() {
+        return musicBandRepository.getMusicBandCountByCreationDate();
+    }    public Long countMusicBandsWithLabelMoreThan(String labelThreshold) {
+        return musicBandRepository.countMusicBandsWithLabelMoreThan(labelThreshold);
+    }    public List<MusicDTOResponse> findMusicBandsByDescription(String substring) {
+        List<MusicBand> musicBands = musicBandRepository.findMusicBandsByDescriptionSubstring(substring);        return musicBands.stream().map(DtoUtil::convertToResponse).collect(Collectors.toList());
+    }    public void addSingleToMusicBand(Long bandId, int singlesCount) throws IOException {
+        musicBandRepository.addSingleToMusicBand(bandId, singlesCount);
+
+        MusicBand musicBand = this.getMusicBandById(bandId);
+        musicWebSocketHandler.sendUpdate("update", DtoUtil.convertToResponse(musicBand));
+    }    public void removeParticipantFromMusicBand(long bandId) throws IOException {
+        musicBandRepository.removeParticipantFromMusicBand(bandId);
+        MusicBand musicBand = this.getMusicBandById(bandId);
+        musicWebSocketHandler.sendUpdate("update", DtoUtil.convertToResponse(musicBand));
     }
+
+
 }

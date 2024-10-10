@@ -21,6 +21,8 @@ public class DtoUtil {
 
         if (musicBand.getGenre() != null) {
             response.setGenre(musicBand.getGenre().name());
+        }else{
+            response.setGenre(null);
         }
 
         response.setNumberOfParticipants(Math.toIntExact(musicBand.getNumberOfParticipants()));

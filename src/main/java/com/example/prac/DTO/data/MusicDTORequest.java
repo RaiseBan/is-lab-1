@@ -13,11 +13,11 @@ import jakarta.validation.constraints.NotNull;
 public class MusicDTORequest {
 
     @NotBlank(message = "Name cannot be null or empty")
+    @NotNull(message = "Name cannot be null")
     private String name;
 
     @NotNull(message = "Coordinates cannot be null")
-    private Coordinates coordinates; // Вложенная сущность Coordinates
-
+    private Coordinates coordinates;
     private String genre;
 
     @Min(value = 1, message = "Number of participants must be greater than 0")
@@ -31,8 +31,7 @@ public class MusicDTORequest {
     private String description;
 
     @NotNull(message = "Best album cannot be null")
-    private Album bestAlbum; // Вложенная сущность Album
-
+    private Album bestAlbum;
     @Min(value = 1, message = "Albums count must be greater than 0")
     private long albumsCount;
 
@@ -40,5 +39,4 @@ public class MusicDTORequest {
     private String establishmentDate;
 
     @NotNull(message = "Label cannot be null")
-    private Label label; // Вложенная сущность Label
-}
+    private Label label;}

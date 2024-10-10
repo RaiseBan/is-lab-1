@@ -11,39 +11,46 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 2. Вернуть количество объектов, значение поля label которых больше заданного
-CREATE OR REPLACE FUNCTION count_musicbands_with_label_more_than(_label_threshold BIGINT)
+CREATE OR REPLACE FUNCTION count_musicbands_with_label_more_than(_label_threshold varchar)
     RETURNS BIGINT AS $$
 BEGIN
     RETURN (SELECT COUNT(*)
             FROM music_band mb
                      JOIN label l ON mb.label_id = l.id
-            WHERE l.id > _label_threshold);
+            WHERE l.name > _label_threshold);
 END;
 $$ LANGUAGE plpgsql;
 
 -- 3. Вернуть массив объектов, значение поля description которых содержит заданную подстроку
-CREATE OR REPLACE FUNCTION find_musicbands_by_description_substring(_substring TEXT)
-    RETURNS TABLE(id BIGINT, name VARCHAR, description VARCHAR) AS $$
+CREATE OR REPLACE FUNCTION find_musicbands_by_description_substring(_substring VARCHAR)
+    RETURNS SETOF music_band AS $$
 BEGIN
     RETURN QUERY
-        SELECT id, name, description
-        FROM music_band
-        WHERE description ILIKE '%' || _substring || '%';
+        SELECT mb.*
+        FROM music_band mb
+        WHERE mb.description ILIKE '%' || _substring || '%';
 END;
 $$ LANGUAGE plpgsql;
+
+
 
 -- 4. Добавить новый сингл указанной группе
-CREATE OR REPLACE FUNCTION add_single_to_musicband(_band_id BIGINT, _singles_count BIGINT)
-    RETURNS VOID AS $$
+CREATE OR REPLACE PROCEDURE add_single_to_musicband(_band_id BIGINT, _singles_count BIGINT)
+    LANGUAGE plpgsql
+AS $$
 BEGIN
-    UPDATE music_band SET singlescount = singlescount + _singles_count WHERE id = _band_id;
+    UPDATE music_band
+    SET singlescount = music_band.singlescount + _singles_count
+    WHERE id = _band_id;
 END;
-$$ LANGUAGE plpgsql;
+$$;
+
 
 -- 5. Удалить из группы участника
-CREATE OR REPLACE FUNCTION remove_participant_from_musicband(_band_id BIGINT)
-    RETURNS VOID AS $$
+CREATE OR REPLACE PROCEDURE remove_participant_from_musicband(_band_id BIGINT)
+    LANGUAGE plpgsql
+AS $$
 BEGIN
     UPDATE music_band SET numberofparticipants = numberofparticipants - 1 WHERE id = _band_id AND numberofparticipants > 0;
 END;
-$$ LANGUAGE plpgsql;
+$$

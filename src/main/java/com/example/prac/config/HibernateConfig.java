@@ -15,7 +15,7 @@ import java.util.Properties;
 public class HibernateConfig {
 
     @Bean
-    @Primary  // Помечаем этот бин как основной
+    @Primary
     public LocalSessionFactoryBean sessionFactory(DataSource dataSource) {
         LocalSessionFactoryBean sessionFactory = new LocalSessionFactoryBean();
         sessionFactory.setDataSource(dataSource);
@@ -29,7 +29,7 @@ public class HibernateConfig {
         Properties properties = new Properties();
         properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         properties.put("hibernate.show_sql", "true");
-        properties.put("hibernate.hbm2ddl.auto", "create-drop");
+        properties.put("hibernate.hbm2ddl.auto", "create-drop"); //create-drop
 
         return properties;
     }
