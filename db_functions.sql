@@ -1,12 +1,12 @@
 -- 1. Сгруппировать объекты по значению поля creationDate, вернуть количество элементов в каждой группе
 CREATE OR REPLACE FUNCTION get_musicband_count_by_creation_date()
-    RETURNS TABLE(creation_date DATE, count BIGINT) AS $$
+    RETURNS TABLE(creation_datee DATE, count BIGINT) AS $$
 BEGIN
     RETURN QUERY
-        SELECT creationdate::date, COUNT(*)
+        SELECT creation_date::date, COUNT(*)
         FROM music_band
-        GROUP BY creationdate::date
-        ORDER BY creationdate::date;
+        GROUP BY creation_date::date
+        ORDER BY creation_date::date;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -40,7 +40,7 @@ CREATE OR REPLACE PROCEDURE add_single_to_musicband(_band_id BIGINT, _singles_co
 AS $$
 BEGIN
     UPDATE music_band
-    SET singlescount = music_band.singlescount + _singles_count
+    SET singles_count = music_band.singles_count + _singles_count
     WHERE id = _band_id;
 END;
 $$;
@@ -51,6 +51,6 @@ CREATE OR REPLACE PROCEDURE remove_participant_from_musicband(_band_id BIGINT)
     LANGUAGE plpgsql
 AS $$
 BEGIN
-    UPDATE music_band SET numberofparticipants = numberofparticipants - 1 WHERE id = _band_id AND numberofparticipants > 0;
+    UPDATE music_band SET number_of_participants = number_of_participants - 1 WHERE id = _band_id AND number_of_participants > 0;
 END;
 $$

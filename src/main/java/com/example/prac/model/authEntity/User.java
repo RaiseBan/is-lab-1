@@ -1,6 +1,11 @@
 package com.example.prac.model.authEntity;
 
+import com.example.prac.model.dataEntity.Album;
+import com.example.prac.model.dataEntity.Coordinates;
+import com.example.prac.model.dataEntity.Label;
 import com.example.prac.model.dataEntity.MusicBand;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,8 +20,8 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Table(name = "users")
-@ToString
-@Data
+@Getter
+@Setter
 public class User implements UserDetails {
 
     @Id
@@ -34,7 +39,7 @@ public class User implements UserDetails {
     @Column(name = "role", nullable = false, length = 20)
     private Role role;
 
-    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<MusicBand> musicBands;
 
     @Override

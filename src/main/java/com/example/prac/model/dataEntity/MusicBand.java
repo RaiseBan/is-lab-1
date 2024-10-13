@@ -1,7 +1,10 @@
 package com.example.prac.model.dataEntity;
 
 import com.example.prac.model.authEntity.User;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.validation.constraints.Null;
 import lombok.Data;
 import jakarta.persistence.*;
 
@@ -10,7 +13,6 @@ import java.time.ZonedDateTime;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.ToString;
 @Entity
 @Table(name = "music_band")
 @NamedNativeQueries({
@@ -29,7 +31,6 @@ import lombok.ToString;
         )
 })
 @Data
-@ToString
 public class MusicBand {
 
     @Id
@@ -41,7 +42,8 @@ public class MusicBand {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @OneToOne(cascade = CascadeType.ALL)
+
+    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     @JoinColumn(name = "coordinates_id", referencedColumnName = "id", nullable = false)
     @NotNull(message = "Coordinates cannot be null")
     private Coordinates coordinates;
@@ -50,7 +52,7 @@ public class MusicBand {
     private ZonedDateTime creationDate = ZonedDateTime.now();
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "genre", nullable = false)
+    @Column(name = "genre", nullable = true)
     private MusicGenre genre;
 
     @Min(value = 1, message = "Number of participants must be greater than 0")
@@ -66,7 +68,7 @@ public class MusicBand {
     @Column(name = "description", nullable = false)
     private String description;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     @JoinColumn(name = "best_album_id", referencedColumnName = "id", nullable = false)
     @NotNull(message = "Best album cannot be null")
     private Album bestAlbum;
@@ -78,13 +80,12 @@ public class MusicBand {
     @NotNull(message = "Establishment date cannot be null")
     @Column(name = "establishment_date", nullable = false)
     private ZonedDateTime establishmentDate;
-
-    @OneToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     @JoinColumn(name = "label_id", referencedColumnName = "id", nullable = false)
     @NotNull(message = "Label cannot be null")
     private Label label;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     @JoinColumn(name = "owner_id", referencedColumnName = "id", nullable = false)
     @NotNull(message = "Owner cannot be null")
     private User owner;

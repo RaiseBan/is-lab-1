@@ -1,13 +1,14 @@
 package com.example.prac.DTO.data;
 
-import com.example.prac.model.dataEntity.Album;
-import com.example.prac.model.dataEntity.Coordinates;
-import com.example.prac.model.dataEntity.Label;
-import lombok.Data;
-
+import com.example.prac.DTO.data.wrappers.AlbumWrapper;
+import com.example.prac.DTO.data.wrappers.CoordinatesWrapper;
+import com.example.prac.DTO.data.wrappers.LabelWrapper;
+import com.example.prac.validators.ValidObject;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Data
 public class MusicDTORequest {
@@ -16,8 +17,10 @@ public class MusicDTORequest {
     @NotNull(message = "Name cannot be null")
     private String name;
 
-    @NotNull(message = "Coordinates cannot be null")
-    private Coordinates coordinates;
+    @ValidObject
+    @Valid
+    private CoordinatesWrapper coordinatesWrapper; 
+
     private String genre;
 
     @Min(value = 1, message = "Number of participants must be greater than 0")
@@ -30,13 +33,17 @@ public class MusicDTORequest {
     @NotBlank(message = "Description cannot be null or empty")
     private String description;
 
-    @NotNull(message = "Best album cannot be null")
-    private Album bestAlbum;
+    @ValidObject
+    @Valid
+    private AlbumWrapper bestAlbumWrapper; 
+
     @Min(value = 1, message = "Albums count must be greater than 0")
     private long albumsCount;
 
     @NotNull(message = "Establishment date cannot be null")
     private String establishmentDate;
 
-    @NotNull(message = "Label cannot be null")
-    private Label label;}
+    @ValidObject
+    @Valid
+    private LabelWrapper labelWrapper; 
+}

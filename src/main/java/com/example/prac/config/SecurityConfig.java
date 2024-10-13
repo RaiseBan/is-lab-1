@@ -29,9 +29,14 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // Доступ к статическим ресурсам
+
                         .requestMatchers("/", "/static/**", "/index.html").permitAll()
-                        // Доступ к API
+
+
+                        .requestMatchers("/api/labels/**").authenticated()
+                        .requestMatchers("/api/coordinates/**").authenticated()
+                        .requestMatchers("/api/albums/**").authenticated()
+                        
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/ws/music/**").permitAll()
                         .requestMatchers("/ws/admin/**").permitAll()
@@ -45,7 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/verify-token").authenticated()
                         .requestMatchers("/api/admin-requests/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin-requests/request").hasAuthority("ROLE_USER")
-                        // Разрешаем все остальные запросы, если они не аутентифицированы
+                        
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -57,10 +62,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.addAllowedOrigin("http://localhost:3000");  // Разрешаем запросы с фронтенда
-        configuration.addAllowedMethod("*");  // Разрешаем любые HTTP методы
-        configuration.addAllowedHeader("*");  // Разрешаем любые заголовки
-        configuration.setAllowCredentials(true);  // Разрешаем отправку cookies/credentials
+        configuration.addAllowedOrigin("http://localhost:3000");  
+        configuration.addAllowedMethod("*");  
+        configuration.addAllowedHeader("*");  
+        configuration.setAllowCredentials(true);  
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

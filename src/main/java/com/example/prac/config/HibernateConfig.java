@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
-
+import com.zaxxer.hikari.HikariDataSource;
 
 import javax.sql.DataSource;
 import java.util.Properties;
@@ -29,7 +29,7 @@ public class HibernateConfig {
         Properties properties = new Properties();
         properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         properties.put("hibernate.show_sql", "true");
-        properties.put("hibernate.hbm2ddl.auto", "create-drop"); //create-drop
+        properties.put("hibernate.hbm2ddl.auto", "none");
 
         return properties;
     }

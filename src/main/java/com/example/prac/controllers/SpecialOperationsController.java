@@ -19,17 +19,25 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SpecialOperationsController {
 
-    private final MusicService musicService;    @GetMapping("/group-by-creation-date")
+    private final MusicService musicService;
+
+    @GetMapping("/group-by-creation-date")
     public ResponseEntity<List<Object[]>> getGroupedByCreationDate() {
         return ResponseEntity.ok(musicService.getMusicBandCountByCreationDate());
-    }    @GetMapping("/count-label-greater-than")
+    }
+
+    @GetMapping("/count-label-greater-than")
     public ResponseEntity<Long> countMusicBandsWithLabelMoreThan(@RequestParam("labelThreshold") String labelThreshold) {
         return ResponseEntity.ok(musicService.countMusicBandsWithLabelMoreThan(labelThreshold));
-    }    @GetMapping("/find-by-description")
+    }
+
+    @GetMapping("/find-by-description")
     public ResponseEntity<List<MusicDTOResponse>> findMusicBandsByDescription(@RequestParam String substring) {
         List<MusicDTOResponse> bands = musicService.findMusicBandsByDescription(substring);
         return ResponseEntity.ok(bands);
-    }    @GetMapping("/add-single")
+    }
+
+    @GetMapping("/add-single")
     public ResponseEntity<Void> addSingleToMusicBand(@RequestParam Long bandId, @RequestParam int singlesCount) throws IOException {
 
         MusicBand existingMusicBand = musicService.getMusicBandById(bandId);
@@ -37,19 +45,24 @@ public class SpecialOperationsController {
         User currentUser = (User) authentication.getPrincipal();
         if (!existingMusicBand.getOwner().getId().equals(currentUser.getId()) &&
                 currentUser.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ADMIN"))) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);        }
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
 
         musicService.addSingleToMusicBand(bandId, singlesCount);
-        return ResponseEntity.ok().build();    }    @PostMapping("/remove-participant")
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/remove-participant")
     public ResponseEntity<Void> removeParticipantFromMusicBand(@RequestParam("bandId") long bandId) throws IOException {
         MusicBand existingMusicBand = musicService.getMusicBandById(bandId);
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User currentUser = (User) authentication.getPrincipal();
         if (!existingMusicBand.getOwner().getId().equals(currentUser.getId()) &&
                 currentUser.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ADMIN"))) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);        }
-                if (existingMusicBand.getNumberOfParticipants() == 1){
-                        return ResponseEntity.unprocessableEntity().build();
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+        if (existingMusicBand.getNumberOfParticipants() == 1) {
+            return ResponseEntity.unprocessableEntity().build();
         }
         musicService.removeParticipantFromMusicBand(bandId);
         return ResponseEntity.ok().build();

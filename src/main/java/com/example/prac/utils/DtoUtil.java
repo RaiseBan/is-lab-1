@@ -1,11 +1,17 @@
 package com.example.prac.utils;
 
-import com.example.prac.DTO.data.BestAlbumDTOResponse;
-import com.example.prac.DTO.data.CoordinatesDTOResponse;
-import com.example.prac.DTO.data.LabelDTOResponse;
-import com.example.prac.DTO.data.MusicDTOResponse;
+import com.example.prac.DTO.data.*;
+import com.example.prac.model.dataEntity.Album;
+import com.example.prac.model.dataEntity.Coordinates;
+import com.example.prac.model.dataEntity.Label;
 import com.example.prac.model.dataEntity.MusicBand;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class DtoUtil {
@@ -46,4 +52,39 @@ public class DtoUtil {
         response.setOwnerUsername(musicBand.getOwner().getUsername());
         return response;
     }
+
+    public static AlbumDTOwId convertToAlbumDTOwIdResponse(Album album) {
+        AlbumDTOwId response = new AlbumDTOwId();
+        response.setId(album.getId());
+        response.setName(album.getName());
+        response.setTracks(album.getTracks());
+        response.setLength(album.getLength());
+        return response;
+    }
+    public static ZonedDateTime convertToZonedDateTime(String dateString) {
+        return ZonedDateTime.of(
+                LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                        .atStartOfDay(),
+                ZoneOffset.UTC // Явно указываем UTC
+        );
+    }
+
+
+    public static LabelDTOwId convertToLabelDTOwIdResponse(Label label) {
+        LabelDTOwId response = new LabelDTOwId();
+        response.setId(label.getId());
+        response.setName(label.getName());
+        return response;
+    }
+
+    public static CoordinatesDTOwId convertToCoordinatesDTOwIdResponse(Coordinates coordinates) {
+        CoordinatesDTOwId response = new CoordinatesDTOwId();
+        response.setId(coordinates.getId());
+        response.setX(coordinates.getX());
+        response.setY(coordinates.getY());
+        return response;
+    }
+
+
+
 }

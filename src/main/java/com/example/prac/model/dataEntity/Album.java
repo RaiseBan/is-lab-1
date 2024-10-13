@@ -1,15 +1,20 @@
 package com.example.prac.model.dataEntity;
 
+import com.example.prac.model.authEntity.User;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import lombok.Getter;
+import lombok.Setter;
 
 
 @Entity
 @Table(name = "album")
-@Data
+@Setter
+@Getter
 public class Album {
 
     @Id
@@ -29,4 +34,9 @@ public class Album {
     @Min(value = 1, message = "Length must be greater than 0")
     @Column(name = "length", nullable = false)
     private Integer length;
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "owner_id")
+    @JsonBackReference
+    private User owner;
 }

@@ -28,49 +28,76 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/music")
 public class MusicController {
     private final MusicWebSocketHandler musicWebSocketHandler;
-    private final MusicService musicService;    @PostMapping
+    private final MusicService musicService;
+
+    @PostMapping
     public ResponseEntity<?> createMusicBand(@Valid @RequestBody MusicDTORequest musicDTORequest, BindingResult result) throws IOException {
-        if (result.hasErrors()) {            Map<String, String> errors = new HashMap<>();
-            result.getFieldErrors().forEach(error ->
-                    errors.put(error.getField(), error.getDefaultMessage())
-            );
+        if (result.hasErrors()) {
+            Map<String, String> errors = new HashMap<>();
+            result.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
             return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
         }
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        User currentUser = (User) authentication.getPrincipal();        MusicBand savedMusicBand = musicService.saveMusicBand(musicDTORequest, currentUser);
+        User currentUser = (User) authentication.getPrincipal();
 
-        return new ResponseEntity<>(DtoUtil.convertToResponse(savedMusicBand), HttpStatus.CREATED);
-    }    @GetMapping
+        try {
+            MusicBand savedMusicBand = musicService.saveMusicBand(musicDTORequest, currentUser);
+            return new ResponseEntity<>(DtoUtil.convertToResponse(savedMusicBand), HttpStatus.CREATED);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>("Error creating music band", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+
+
+    @GetMapping
     public ResponseEntity<List<MusicDTOResponse>> getAllMusicBands() {
         List<MusicBand> musicBands = musicService.getAllMusicBands();
         List<MusicDTOResponse> responses = musicBands.stream()
                 .map(DtoUtil::convertToResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
-    }    @GetMapping("/{id}")
+    }
+
+    @GetMapping("/{id}")
     public ResponseEntity<MusicDTOResponse> getMusicBandById(@PathVariable long id) {
         MusicBand musicBand = musicService.getMusicBandById(id);
         return ResponseEntity.ok(DtoUtil.convertToResponse(musicBand));
-    }    @PutMapping("/{id}")
-    public ResponseEntity<MusicDTOResponse> updateMusicBand(@PathVariable long id, @RequestBody MusicDTORequest musicDTORequest) {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                User currentUser = (User) authentication.getPrincipal();
+    }
 
-        MusicBand existingMusicBand = musicService.getMusicBandById(id);        if (!existingMusicBand.getOwner().getId().equals(currentUser.getId()) &&
-                currentUser.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ADMIN"))) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);        }        MusicBand updatedMusicBand = musicService.updateMusicBand(existingMusicBand, musicDTORequest, currentUser);
-        return ResponseEntity.ok(DtoUtil.convertToResponse(updatedMusicBand));
-    }    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteMusicBandById(@PathVariable long id) {
+    @PutMapping("/{id}")
+    public ResponseEntity<MusicDTOResponse> updateMusicBand(@PathVariable long id, @RequestBody MusicDTORequest musicDTORequest) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User currentUser = (User) authentication.getPrincipal();
 
-        MusicBand existingMusicBand = musicService.getMusicBandById(id);        if (!existingMusicBand.getOwner().getId().equals(currentUser.getId()) &&
+        MusicBand existingMusicBand = musicService.getMusicBandById(id);
+        if (!existingMusicBand.getOwner().getId().equals(currentUser.getId()) &&
                 currentUser.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ADMIN"))) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);        }
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+        
+        MusicBand updatedMusicBand = musicService.updateMusicBand(existingMusicBand, musicDTORequest, currentUser);
+        return ResponseEntity.ok(DtoUtil.convertToResponse(updatedMusicBand));
+    }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMusicBandById(@PathVariable long id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = (User) authentication.getPrincipal();
+        System.out.println("1");
+        MusicBand existingMusicBand = musicService.getMusicBandById(id);
+        System.out.println("2");
+        if (!existingMusicBand.getOwner().getId().equals(currentUser.getId()) &&
+                currentUser.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ADMIN"))) {
+            System.out.println("4");
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+        
         musicService.deleteMusicBandById(id);
+        
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }
