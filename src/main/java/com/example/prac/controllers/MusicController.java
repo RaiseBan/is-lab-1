@@ -1,9 +1,11 @@
 package com.example.prac.controllers;
 
 import com.example.prac.DTO.data.*;
+import com.example.prac.DTO.info.ImportHistoryDto;
 import com.example.prac.model.dataEntity.MusicBand;
 import com.example.prac.model.dataEntity.MusicGenre;
 import com.example.prac.model.authEntity.User;
+import com.example.prac.service.data.ImportService;
 import com.example.prac.service.data.MusicService;
 import com.example.prac.utils.DtoUtil;
 import com.example.prac.webSocket.MusicWebSocketHandler;
@@ -15,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
@@ -29,6 +32,7 @@ import java.util.stream.Collectors;
 public class MusicController {
     private final MusicWebSocketHandler musicWebSocketHandler;
     private final MusicService musicService;
+    private final ImportService importService;
 
     @PostMapping
     public ResponseEntity<?> createMusicBand(@Valid @RequestBody MusicDTORequest musicDTORequest, BindingResult result) throws IOException {
@@ -100,4 +104,21 @@ public class MusicController {
         
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
+
+    @PostMapping("/import")
+    public ResponseEntity<?> importMusicBands(@RequestParam("file") MultipartFile file) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            User currentUser = (User) authentication.getPrincipal();
+
+            ImportHistoryDto result = importService.importMusicBandsFromFile(file, currentUser);
+
+            return ResponseEntity.ok(result); // Успешный ответ с результатом импорта
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "FAILED", "message", e.getMessage()));
+        }
+    }
+
+
+
 }

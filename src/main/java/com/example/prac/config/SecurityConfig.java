@@ -42,7 +42,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/admin/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/music").permitAll()
                         .requestMatchers("/api/music/**").authenticated()
-
+                        .requestMatchers("/api/import-history").authenticated()
                         .requestMatchers("/api/v1/special/**").permitAll()
                         .requestMatchers("/api/v1/special/add-single").authenticated()
                         .requestMatchers("/api/v1/special/remove-participant").authenticated()

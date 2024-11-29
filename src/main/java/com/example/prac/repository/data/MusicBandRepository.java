@@ -159,5 +159,22 @@ public class MusicBandRepository {
     }
 
 
+    public void saveAll(List<MusicBand> musicBands) {
+        try (Session session = sessionFactory.openSession()) {
+            for (MusicBand musicBand : musicBands) {
+                session.save(musicBand);
+            }
+        } catch (ConstraintViolationException e) {
+            Set<ConstraintViolation<?>> violations = e.getConstraintViolations();
+            throw new ConstraintViolationException("Validation failed for one or more entities", violations);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to save music bands", e);
+        }
+    }
+
+
+
+
 
 }
