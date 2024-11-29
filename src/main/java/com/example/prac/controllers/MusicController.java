@@ -48,7 +48,9 @@ public class MusicController {
         try {
             MusicBand savedMusicBand = musicService.saveMusicBand(musicDTORequest, currentUser);
             return new ResponseEntity<>(DtoUtil.convertToResponse(savedMusicBand), HttpStatus.CREATED);
-        } catch (Exception e) {
+        }catch (IllegalArgumentException illegalArgumentException){
+            return new ResponseEntity<>(illegalArgumentException.getMessage(), HttpStatus.BAD_REQUEST);
+        }catch (Exception e) {
             e.printStackTrace();
             return new ResponseEntity<>("Error creating music band", HttpStatus.INTERNAL_SERVER_ERROR);
         }

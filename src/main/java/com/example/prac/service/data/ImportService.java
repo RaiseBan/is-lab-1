@@ -9,7 +9,6 @@ import com.example.prac.model.dataEntity.Label;
 import com.example.prac.model.dataEntity.MusicBand;
 import com.example.prac.model.dataEntity.MusicGenre;
 import com.example.prac.model.info.ImportHistory;
-import com.example.prac.repository.data.MusicBandRepository;
 import com.example.prac.repository.info.ImportHistoryRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,12 +16,15 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -32,71 +34,73 @@ public class ImportService {
 
     private final ObjectMapper objectMapper;
     private final ImportHistoryRepository importHistoryRepository;
+    private final SessionFactory sessionFactory;
 
-    private final MusicBandRepository musicBandRepository;
-    @Transactional
     public ImportHistoryDto importMusicBandsFromFile(MultipartFile file, User user) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
 
-        // Читаем JSON из файла
         List<MusicDTORequest> musicDTOList = objectMapper.readValue(
                 file.getInputStream(),
                 new TypeReference<>() {}
         );
 
-        int successfulImports = 0; // Счётчик успешных обработанных объектов
-        int totalObjects = musicDTOList.size(); // Общее количество объектов
+        int successfulImports = 0;
+        int totalObjects = musicDTOList.size();
+        List<String> errorMessages = new ArrayList<>();
 
-        for (MusicDTORequest dto : musicDTOList) {
+        try (Session session = sessionFactory.openSession()) {
+            Transaction transaction = session.beginTransaction();
+
             try {
-                // Обрабатываем один объект
-                processSingleMusicBand(dto, user);
-                successfulImports++; // Увеличиваем счётчик успешных импортов
-            } catch (ConstraintViolationException e) {
-                // Логируем ошибку валидации, но продолжаем обработку
-                System.err.println("Validation failed for DTO: " + dto + ", Error: " + e.getMessage());
+                for (MusicDTORequest dto : musicDTOList) {
+                    try {
+                        processSingleMusicBand(dto, user, session);
+                        successfulImports++;
+                    } catch (ConstraintViolationException e) {
+                        errorMessages.add("Validation failed for DTO: " + dto + ". Error: " + e.getMessage());
+                        throw e; // Откат всей транзакции
+                    } catch (IllegalArgumentException e) {
+                        errorMessages.add("Invalid data for DTO: " + dto + ". Error: " + e.getMessage());
+                        throw e; // Откат всей транзакции
+                    } catch (Exception e) {
+                        errorMessages.add("Unexpected error while processing DTO: " + dto + ". Error: " + e.getMessage());
+                        throw e; // Откат всей транзакции
+                    }
+                }
+
+                transaction.commit();
             } catch (Exception e) {
-                // Логируем любую другую ошибку
-                System.err.println("Unexpected error while processing DTO: " + dto + ", Error: " + e.getMessage());
+                transaction.rollback();
+                // После отката продолжаем процесс для записи истории
+                System.err.println("Transaction failed: " + e.getMessage());
             }
         }
 
-        // Определяем статус импорта
+        // Записываем историю импорта даже если транзакция была откатана
         String status = (successfulImports == totalObjects) ? "SUCCESS" : "FAILED";
+        ImportHistory history = createImportHistory(totalObjects, successfulImports, user, status, errorMessages);
 
-        // Создаём запись в истории
-        ImportHistory history = createImportHistory(totalObjects, successfulImports, user, status);
-
-        // Возвращаем DTO, используя метод fromEntity
         return ImportHistoryDto.fromEntity(history);
     }
 
-
-    @Transactional
-    protected void processSingleMusicBand(MusicDTORequest dto, User user) {
-        // Валидация DTO
+    private void processSingleMusicBand(MusicDTORequest dto, User user, Session session) {
         validateMusicDTO(dto);
 
-        // Конвертация и сохранение
-        MusicBand musicBand = convertToEntity(dto, user);
-        // Сохранение через репозиторий (или EntityManager)
-        // Например:
-         musicBandRepository.save(musicBand);
+        MusicBand musicBand = convertToEntity(dto, user, session);
+        session.persist(musicBand);
     }
 
-    private ImportHistory createImportHistory(int totalObjects, int addedObjects, User user, String status) {
+    private ImportHistory createImportHistory(int totalObjects, int addedObjects, User user, String status, List<String> errorMessages) {
         ImportHistory history = new ImportHistory();
         history.setStatus(status);
         history.setUser(user);
-        history.setTotalObjectsCount(totalObjects); // Общее количество объектов
-        history.setAddedObjectsCount(addedObjects); // Успешно добавленные объекты
-
-        // Сохраняем историю в базе данных
+        history.setTotalObjectsCount(totalObjects);
+        history.setAddedObjectsCount(addedObjects);
+//        history.setErrorMessages(String.join("; ", errorMessages)); // Добавляем сообщения об ошибках
         return importHistoryRepository.save(history);
     }
-
 
     private void validateMusicDTO(MusicDTORequest dto) throws ConstraintViolationException {
         Set<ConstraintViolation<MusicDTORequest>> violations =
@@ -107,10 +111,45 @@ public class ImportService {
         }
     }
 
-    private MusicBand convertToEntity(MusicDTORequest dto, User user) {
+    private MusicBand convertToEntity(MusicDTORequest dto, User user, Session session) {
         MusicBand musicBand = new MusicBand();
 
-        musicBand.setOwner(user);
+        // Загрузить пользователя из текущей сессии
+        User managedUser = session.get(User.class, user.getId());
+        if (managedUser == null) {
+            throw new IllegalArgumentException("User not found in the database.");
+        }
+        musicBand.setOwner(managedUser);
+
+        // Сохранение координат
+        Coordinates coordinates = dto.getCoordinatesWrapper().getCoordinates();
+        if (coordinates != null) {
+            coordinates.setOwner(managedUser);
+            session.persist(coordinates);
+            musicBand.setCoordinates(coordinates);
+        } else {
+            throw new IllegalArgumentException("Coordinates cannot be null");
+        }
+
+        // Сохранение альбома
+        Album album = dto.getBestAlbumWrapper().getBestAlbum();
+        if (album != null) {
+            album.setOwner(managedUser);
+            session.persist(album);
+            musicBand.setBestAlbum(album);
+        } else {
+            throw new IllegalArgumentException("Best album cannot be null");
+        }
+
+        // Сохранение лейбла
+        Label label = dto.getLabelWrapper().getLabel();
+        if (label != null) {
+            label.setOwner(managedUser);
+            session.persist(label);
+            musicBand.setLabel(label);
+        } else {
+            throw new IllegalArgumentException("Label cannot be null");
+        }
 
         // Установка остальных полей
         musicBand.setName(dto.getName());
@@ -120,13 +159,7 @@ public class ImportService {
         musicBand.setDescription(dto.getDescription());
         musicBand.setAlbumsCount(dto.getAlbumsCount());
         musicBand.setEstablishmentDate(ZonedDateTime.parse(dto.getEstablishmentDate()));
-        musicBand.setCreatedBy(user);
-
-        // Пример сохранения связанных объектов:
-        // Если используются связанные сущности, например Coordinates, Album или Label
-        // musicBand.setCoordinates(dto.getCoordinatesWrapper().getCoordinates());
-        // musicBand.setBestAlbum(dto.getBestAlbumWrapper().getBestAlbum());
-        // musicBand.setLabel(dto.getLabelWrapper().getLabel());
+        musicBand.setCreatedBy(managedUser);
 
         return musicBand;
     }
