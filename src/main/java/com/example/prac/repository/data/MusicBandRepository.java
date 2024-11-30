@@ -1,6 +1,7 @@
 package com.example.prac.repository.data;
 
 import com.example.prac.model.dataEntity.MusicBand;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
 import jakarta.validation.ConstraintViolation;
@@ -10,9 +11,12 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 
@@ -22,49 +26,77 @@ public class MusicBandRepository {
     @Autowired
     private SessionFactory sessionFactory;
 
-    public void save(MusicBand musicBand) {
+    public void save(MusicBand musicBand) throws SQLException{
         Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()){
+        try (Session session = sessionFactory.openSession()) {
+
+            session.doWork(connection -> {
+                connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            });
+
             transaction = session.beginTransaction();
-            System.out.println("asdfasdf");
-                    session.save(musicBand);
+            session.save(musicBand);
             transaction.commit();
-        } catch (ConstraintViolationException e) {
-            e.printStackTrace();
-            Set<ConstraintViolation<?>> violations = e.getConstraintViolations();
-            throw e;  
+
+        }catch (ConstraintViolationException e) {
+            // Здесь обрабатываем ошибку нарушения уникальности
+            System.out.println("Duplicate entry found: " + e.getMessage());
+            throw new ConstraintViolationException("MusicBand with the same name already exists.", e.getConstraintViolations());
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println("filed");
+            if (transaction != null) {
+                System.out.println("Rollback");
+                transaction.rollback();  // Откатим транзакцию
+            }
             throw new RuntimeException("Failed to save music band", e);
         }
     }
 
 
-    public void update(MusicBand musicBand) {
+
+    public void update(MusicBand musicBand) throws OptimisticLockException{
         Transaction transaction = null;
         try (Session session = sessionFactory.openSession()) {
+            // Устанавливаем уровень изоляции транзакции вручную
+            session.doWork(connection -> {
+                connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            });
+
             transaction = session.beginTransaction();
             session.merge(musicBand);
             transaction.commit();
-        } catch (Exception e) {
+        } catch (OptimisticLockException e) {
             if (transaction != null) {
+                System.out.println("rollback");
                 transaction.rollback();
             }
+            e.printStackTrace();
+            System.out.println("lock update");
+            throw e;
+        }catch (Exception e){
             e.printStackTrace();
         }
     }
 
+
     public void delete(MusicBand musicBand) {
         Transaction transaction = null;
         try (Session session = sessionFactory.openSession()) {
+            session.doWork(connection -> {
+                connection.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+            });
             transaction = session.beginTransaction();
             session.remove(musicBand);
             transaction.commit();
-        } catch (Exception e) {
+        }  catch (OptimisticLockException e) {
             if (transaction != null) {
+                System.out.println("rollback");
                 transaction.rollback();
             }
-            e.printStackTrace();
+//            e.printStackTrace();
+            System.out.println("lock delete");
+            throw e;
         }
     }
 

@@ -39,7 +39,7 @@ public class MusicBand {
     private long id;
 
     @NotBlank(message = "Name cannot be null or empty")
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
 
 
@@ -100,6 +100,9 @@ public class MusicBand {
 
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
+
+//    @Version
+//    private int version;
 
     @PreUpdate
     protected void onUpdate() {

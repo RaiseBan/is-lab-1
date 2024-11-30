@@ -24,7 +24,7 @@ import java.security.NoSuchAlgorithmException;
 
 @Configuration
 @RequiredArgsConstructor
-@EnableAspectJAutoProxy
+//@EnableAspectJAutoProxy
 public class ApplicationConfig {
 
     private final UserRepository userRepository;

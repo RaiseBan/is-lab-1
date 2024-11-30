@@ -32,4 +32,6 @@ public class Coordinates {
     @JoinColumn(name = "owner_id")
     @JsonBackReference
     private User owner;
+
+
 }
