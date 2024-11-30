@@ -45,11 +45,11 @@ public class AdminRequestService {
     }
 
     public AdminRequest getAdminRequestById(Long id) {
-        return adminRequestRepository.findById(id);
+        return adminRequestRepository.findById(id).orElseThrow(() -> new RuntimeException("admin not found"));
     }
 
     public void updateAdminRequest(AdminRequest adminRequest) {
-        adminRequestRepository.update(adminRequest);
+        adminRequestRepository.save(adminRequest);
     }
 
     public List<User> getAllAdmins() {
@@ -68,7 +68,7 @@ public class AdminRequestService {
     }
 
     public boolean approveRequest(Long requestId, User currentUser) throws Exception {
-        AdminRequest adminRequest = adminRequestRepository.findById(requestId);
+        AdminRequest adminRequest = adminRequestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("request not found"));
 
         if (adminRequest == null) {
             return false;
@@ -93,6 +93,6 @@ public class AdminRequestService {
 
     public void promoteUserToAdmin(User user) {
         user.setRole(Role.ADMIN);
-        userRepository.update(user);
+        userRepository.save(user);
     }
 }

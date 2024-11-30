@@ -19,6 +19,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.event.spi.SaveOrUpdateEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
@@ -38,28 +39,26 @@ public class MusicService {
     private final MusicWebSocketHandler musicWebSocketHandler;
 
 
-    public MusicBand saveMusicBand(MusicDTORequest musicDTORequest, User user)  {
-
+    @Transactional
+    public MusicBand saveMusicBand(MusicDTORequest musicDTORequest, User user) {
         try {
             MusicBand musicBand = new MusicBand();
             musicBand.setName(musicDTORequest.getName());
 
-
             if (musicDTORequest.getCoordinatesWrapper().getCoordinatesId() != null) {
-
-                Coordinates existingCoordinates = coordinatesRepository.findById(musicDTORequest.getCoordinatesWrapper().getCoordinatesId());
+                Coordinates existingCoordinates = coordinatesRepository.findById(musicDTORequest.getCoordinatesWrapper().getCoordinatesId())
+                        .orElseThrow(() -> new RuntimeException("Coordinates not found"));
                 musicBand.setCoordinates(existingCoordinates);
             } else if (musicDTORequest.getCoordinatesWrapper().getCoordinates() != null) {
-
                 Coordinates newCoordinates = musicDTORequest.getCoordinatesWrapper().getCoordinates();
                 newCoordinates.setOwner(user);
                 coordinatesRepository.save(newCoordinates);
                 musicBand.setCoordinates(newCoordinates);
             }
 
-
             if (musicDTORequest.getBestAlbumWrapper() != null && musicDTORequest.getBestAlbumWrapper().getBestAlbumId() != null) {
-                Album existingAlbum = albumRepository.findById(musicDTORequest.getBestAlbumWrapper().getBestAlbumId());
+                Album existingAlbum = albumRepository.findById(musicDTORequest.getBestAlbumWrapper().getBestAlbumId())
+                        .orElseThrow(() -> new RuntimeException("Album not found"));
                 musicBand.setBestAlbum(existingAlbum);
             } else if (musicDTORequest.getBestAlbumWrapper() != null && musicDTORequest.getBestAlbumWrapper().getBestAlbum() != null) {
                 Album newAlbum = musicDTORequest.getBestAlbumWrapper().getBestAlbum();
@@ -68,9 +67,9 @@ public class MusicService {
                 musicBand.setBestAlbum(newAlbum);
             }
 
-
             if (musicDTORequest.getLabelWrapper() != null && musicDTORequest.getLabelWrapper().getLabelId() != null) {
-                Label existingLabel = labelRepository.findById(musicDTORequest.getLabelWrapper().getLabelId());
+                Label existingLabel = labelRepository.findById(musicDTORequest.getLabelWrapper().getLabelId())
+                        .orElseThrow(() -> new RuntimeException("Label not found"));
                 musicBand.setLabel(existingLabel);
             } else if (musicDTORequest.getLabelWrapper() != null && musicDTORequest.getLabelWrapper().getLabel() != null) {
                 Label newLabel = musicDTORequest.getLabelWrapper().getLabel();
@@ -79,39 +78,31 @@ public class MusicService {
                 musicBand.setLabel(newLabel);
             }
 
-
             try {
                 musicBand.setGenre(MusicGenre.valueOf(musicDTORequest.getGenre()));
             } catch (Exception e) {
                 musicBand.setGenre(null);
             }
 
-
             musicBand.setNumberOfParticipants(musicDTORequest.getNumberOfParticipants());
             musicBand.setSinglesCount(musicDTORequest.getSinglesCount());
             musicBand.setDescription(musicDTORequest.getDescription());
             musicBand.setAlbumsCount(musicDTORequest.getAlbumsCount());
             musicBand.setEstablishmentDate(ZonedDateTime.parse(musicDTORequest.getEstablishmentDate()));
-            musicBand.setOwner(user);
-            musicBand.setCreatedBy(user);
+            musicBand.setOwner(user);  // Убедитесь, что user привязан
+            musicBand.setCreatedBy(user);  // Убедитесь, что user привязан
 
-
-            musicBandRepository.save(musicBand);
+            musicBandRepository.save(musicBand);  // Сохраняем или обновляем MusicBand
 
             musicWebSocketHandler.sendUpdate("create", DtoUtil.convertToResponse(musicBand));
 
             return musicBand;
-        }catch (ConstraintViolationException e){
-            throw new ConstraintViolationException("fail", e.getConstraintViolations());
-        }
-        catch (HibernateException e) {
-            throw new RuntimeException("Failed to save music band", e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException("Error saving MusicBand", e);
         }
     }
+
+
 
 
     public List<MusicBand> getAllMusicBands() {
@@ -124,7 +115,7 @@ public class MusicService {
 
     public MusicBand getMusicBandById(long id) {
         try {
-            MusicBand musicBand = musicBandRepository.findById(id);
+            MusicBand musicBand = musicBandRepository.findById(id).orElseThrow(() -> new RuntimeException());
 
             if (musicBand == null) {
                 throw new IllegalArgumentException("MusicBand with id " + id + " not found");
@@ -135,6 +126,7 @@ public class MusicService {
         }
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.SERIALIZABLE)
     public MusicBand updateMusicBand(MusicBand musicBand, MusicDTORequest musicDTORequest, User user) {
         try {
             if (musicBand == null) {
@@ -152,21 +144,23 @@ public class MusicService {
             if (musicDTORequest.getGenre() == null || musicDTORequest.getGenre().equals("")) {
                 musicBand.setGenre(null);
             } else {
+
                 musicBand.setGenre(MusicGenre.valueOf(musicDTORequest.getGenre()));
             }
 
 
             Coordinates coordinates = musicDTORequest.getCoordinatesWrapper().getCoordinates();
             if (coordinates != null) {
-                coordinatesRepository.update(coordinates);
+                coordinates.setOwner(user);
+                coordinatesRepository.save(coordinates);
                 musicBand.setCoordinates(coordinates);
             }
 
 
             Album bestAlbum = musicDTORequest.getBestAlbumWrapper().getBestAlbum();
             if (bestAlbum != null) {
-
-                albumRepository.update(bestAlbum);
+                bestAlbum.setOwner(user);
+                albumRepository.save(bestAlbum);
 
                 musicBand.setBestAlbum(bestAlbum);
             }
@@ -175,8 +169,8 @@ public class MusicService {
             Label label = musicDTORequest.getLabelWrapper().getLabel();
             if (label != null) {
 
-
-                labelRepository.update(label);
+                label.setOwner(user);
+                labelRepository.save(label);
 
                 musicBand.setLabel(label);
             }
@@ -188,13 +182,14 @@ public class MusicService {
 
                 musicBand.setEstablishmentDate(DtoUtil.convertToZonedDateTime(formattedDate));
             } catch (Exception e) {
+
             }
 
 
             musicBand.setUpdatedBy(user);
 
             System.out.println(1);
-            musicBandRepository.update(musicBand);
+            musicBandRepository.save(musicBand);
             System.out.println("2");
             musicWebSocketHandler.sendUpdate("update", DtoUtil.convertToResponse(musicBand));
 
@@ -209,7 +204,7 @@ public class MusicService {
 
 
     public void deleteMusicBandById(Long id) {
-        MusicBand musicBand = musicBandRepository.findById(id);
+        MusicBand musicBand = musicBandRepository.findById(id).orElseThrow(() -> new RuntimeException());
 
         // Отвязываем зависимые объекты
         if (musicBand.getCoordinates() != null) {

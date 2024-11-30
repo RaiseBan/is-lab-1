@@ -43,7 +43,7 @@ public class MusicBand {
     private String name;
 
 
-    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
+    @ManyToOne(cascade = { CascadeType.MERGE, CascadeType.REFRESH})
     @JoinColumn(name = "coordinates_id", referencedColumnName = "id", nullable = false)
     @NotNull(message = "Coordinates cannot be null")
     private Coordinates coordinates;
@@ -68,7 +68,7 @@ public class MusicBand {
     @Column(name = "description", nullable = false)
     private String description;
 
-    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
+    @ManyToOne(cascade = {CascadeType.MERGE, CascadeType.REFRESH})
     @JoinColumn(name = "best_album_id", referencedColumnName = "id", nullable = false)
     @NotNull(message = "Best album cannot be null")
     private Album bestAlbum;
@@ -80,12 +80,12 @@ public class MusicBand {
     @NotNull(message = "Establishment date cannot be null")
     @Column(name = "establishment_date", nullable = false)
     private ZonedDateTime establishmentDate;
-    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
+    @ManyToOne(cascade = { CascadeType.MERGE, CascadeType.REFRESH})
     @JoinColumn(name = "label_id", referencedColumnName = "id", nullable = false)
     @NotNull(message = "Label cannot be null")
     private Label label;
 
-    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
+    @ManyToOne(cascade = {CascadeType.MERGE, CascadeType.REFRESH})
     @JoinColumn(name = "owner_id", referencedColumnName = "id", nullable = false)
     @NotNull(message = "Owner cannot be null")
     private User owner;

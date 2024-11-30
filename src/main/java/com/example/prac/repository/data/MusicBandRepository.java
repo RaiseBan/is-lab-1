@@ -1,212 +1,49 @@
 package com.example.prac.repository.data;
 
 import com.example.prac.model.dataEntity.MusicBand;
-import jakarta.persistence.OptimisticLockException;
-import jakarta.persistence.ParameterMode;
-import jakarta.persistence.StoredProcedureQuery;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
-import org.hibernate.query.Query;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.sql.CallableStatement;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
-import java.util.Set;
 
 @Repository
-public class MusicBandRepository {
+public interface MusicBandRepository extends JpaRepository<MusicBand, Long> {
 
-    @Autowired
-    private SessionFactory sessionFactory;
+    // Поиск групп по подстроке в описании
+    @Query("SELECT mb FROM MusicBand mb WHERE mb.description LIKE %:substring%")
+    List<MusicBand> findMusicBandsByDescriptionSubstring(@Param("substring") String substring);
 
-    public void save(MusicBand musicBand) throws SQLException{
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
+    // Получение количества групп по дате создания (с использованием хранимой функции)
+    @Query(value = "SELECT * FROM get_musicband_count_by_creation_date()", nativeQuery = true)
+    List<Object[]> getMusicBandCountByCreationDate();
 
-            session.doWork(connection -> {
-                connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
-            });
+    // Получение количества групп, у которых лейбл превышает заданный порог
+    @Query(value = "SELECT count_musicbands_with_label_more_than(:labelThreshold)", nativeQuery = true)
+    Long countMusicBandsWithLabelMoreThan(@Param("labelThreshold") String labelThreshold);
 
-            transaction = session.beginTransaction();
-            session.save(musicBand);
-            transaction.commit();
+    // Запрос на добавление сингла в группу через хранимую процедуру
+    @Query(value = "CALL add_single_to_musicband(:bandId, :singlesCount)", nativeQuery = true)
+    void addSingleToMusicBand(@Param("bandId") Long bandId, @Param("singlesCount") int singlesCount);
 
-        }catch (ConstraintViolationException e) {
-            // Здесь обрабатываем ошибку нарушения уникальности
-            System.out.println("Duplicate entry found: " + e.getMessage());
-            throw new ConstraintViolationException("MusicBand with the same name already exists.", e.getConstraintViolations());
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("filed");
-            if (transaction != null) {
-                System.out.println("Rollback");
-                transaction.rollback();  // Откатим транзакцию
-            }
-            throw new RuntimeException("Failed to save music band", e);
-        }
-    }
+    // Запрос на удаление участника из группы через хранимую процедуру
+    @Query(value = "CALL remove_participant_from_musicband(:bandId)", nativeQuery = true)
+    void removeParticipantFromMusicBand(@Param("bandId") long bandId);
 
+    // Подсчет количества групп по ID координат
+    @Query("SELECT COUNT(mb.id) FROM MusicBand mb WHERE mb.coordinates.id = :coordinatesId")
+    int countByCoordinatesId(@Param("coordinatesId") long coordinatesId);
 
+    // Подсчет количества групп по ID лучшего альбома
+    @Query("SELECT COUNT(mb.id) FROM MusicBand mb WHERE mb.bestAlbum.id = :bestAlbumId")
+    int countByBestAlbumId(@Param("bestAlbumId") long bestAlbumId);
 
-    public void update(MusicBand musicBand) throws OptimisticLockException{
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            // Устанавливаем уровень изоляции транзакции вручную
-            session.doWork(connection -> {
-                connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
-            });
+    // Подсчет количества групп по ID лейбла
+    @Query("SELECT COUNT(mb.id) FROM MusicBand mb WHERE mb.label.id = :labelId")
+    int countByLabelId(@Param("labelId") long labelId);
 
-            transaction = session.beginTransaction();
-            session.merge(musicBand);
-            transaction.commit();
-        } catch (OptimisticLockException e) {
-            if (transaction != null) {
-                System.out.println("rollback");
-                transaction.rollback();
-            }
-            e.printStackTrace();
-            System.out.println("lock update");
-            throw e;
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-    }
-
-
-    public void delete(MusicBand musicBand) {
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            session.doWork(connection -> {
-                connection.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
-            });
-            transaction = session.beginTransaction();
-            session.remove(musicBand);
-            transaction.commit();
-        }  catch (OptimisticLockException e) {
-            if (transaction != null) {
-                System.out.println("rollback");
-                transaction.rollback();
-            }
-//            e.printStackTrace();
-            System.out.println("lock delete");
-            throw e;
-        }
-    }
-
-
-    public MusicBand findById(long id) {
-        try (Session session = sessionFactory.openSession()) {
-            return session.get(MusicBand.class, id);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public List<MusicBand> findAll() {
-        try (Session session = sessionFactory.openSession()) {
-            return session.createQuery("FROM MusicBand").list();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public List<Object[]> getMusicBandCountByCreationDate() {
-        try (Session session = sessionFactory.openSession()) {
-            return session.createNativeQuery("SELECT * FROM get_musicband_count_by_creation_date()")
-                    .list();
-        }
-    }
-
-    public Long countMusicBandsWithLabelMoreThan(String labelThreshold) {
-        try (Session session = sessionFactory.openSession()) {
-            return ((Number) session.createNativeQuery("SELECT count_musicbands_with_label_more_than(:labelThreshold)")
-                    .setParameter("labelThreshold", labelThreshold)
-                    .getSingleResult()).longValue();
-        }
-    }
-
-    public List<MusicBand> findMusicBandsByDescriptionSubstring(String substring) {
-        try (Session session = sessionFactory.openSession()) {
-            return session.createNamedQuery("MusicBand.findByDescriptionSubstring", MusicBand.class)
-                    .setParameter("substring", substring)
-                    .getResultList();
-        }
-    }
-
-    public void addSingleToMusicBand(Long bandId, int singlesCount) {
-        try (Session session = sessionFactory.openSession()) {
-            StoredProcedureQuery query = session.createStoredProcedureQuery("add_single_to_musicband");
-            query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(2, Integer.class, ParameterMode.IN);
-            query.setParameter(1, bandId);
-            query.setParameter(2, singlesCount);
-            query.execute();
-        }
-    }
-
-    public void removeParticipantFromMusicBand(long bandId) {
-        try (Session session = sessionFactory.openSession()) {
-            StoredProcedureQuery query = session.createStoredProcedureQuery("remove_participant_from_musicband");
-            query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
-            query.setParameter(1, bandId);
-            query.execute();
-        }
-
-
-    }
-
-    public int countByCoordinatesId(long coordinatesId) {
-        try (Session session = sessionFactory.openSession()) {
-            Query<Long> query = session.createQuery(
-                    "SELECT COUNT(mb.id) FROM MusicBand mb WHERE mb.coordinates.id = :coordinatesId", Long.class);
-            query.setParameter("coordinatesId", coordinatesId);
-            return query.uniqueResult().intValue();
-        }
-    }
-    public int countByBestAlbumId(long bestAlbumId) {
-        try (Session session = sessionFactory.openSession()) {
-            Query<Long> query = session.createQuery(
-                    "SELECT COUNT(mb.id) FROM MusicBand mb WHERE mb.bestAlbum.id = :bestAlbumId", Long.class);
-            query.setParameter("bestAlbumId", bestAlbumId);
-            return query.uniqueResult().intValue();
-        }
-    }
-    public int countByLabelId(long labelId) {
-        try (Session session = sessionFactory.openSession()) {
-            Query<Long> query = session.createQuery(
-                    "SELECT COUNT(mb.id) FROM MusicBand mb WHERE mb.label.id = :labelId", Long.class);
-            query.setParameter("labelId", labelId);
-            return query.uniqueResult().intValue();
-        }
-    }
-
-
-    public void saveAll(List<MusicBand> musicBands) {
-        try (Session session = sessionFactory.openSession()) {
-            for (MusicBand musicBand : musicBands) {
-                session.save(musicBand);
-            }
-        } catch (ConstraintViolationException e) {
-            Set<ConstraintViolation<?>> violations = e.getConstraintViolations();
-            throw new ConstraintViolationException("Validation failed for one or more entities", violations);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to save music bands", e);
-        }
-    }
-
-
-
-
-
+    // Сохранение всех групп (batch)
+    @Override
+    <S extends MusicBand> List<S> saveAll(Iterable<S> entities);
 }

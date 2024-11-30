@@ -28,7 +28,7 @@ public class Coordinates {
     @Column(name = "y", nullable = false)
     private double y;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE})
     @JoinColumn(name = "owner_id")
     @JsonBackReference
     private User owner;

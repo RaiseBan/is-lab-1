@@ -1,80 +1,26 @@
 package com.example.prac.repository.auth;
 
 import com.example.prac.model.authEntity.User;
-import lombok.AllArgsConstructor;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
-@AllArgsConstructor
+import java.util.List;
+
 @Repository
-public class UserRepository {
+public interface UserRepository extends JpaRepository<User, Long> {
 
-    private final SessionFactory sessionFactory;    public void save(User user) {
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            transaction = session.beginTransaction();
-            session.save(user);
-            transaction.commit();
-        } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-            }
-            e.printStackTrace();
-        }
-    }    public Optional<User> findById(Long id) {
-        try (Session session = sessionFactory.openSession()) {
-            return Optional.ofNullable(session.get(User.class, id));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Optional.empty();
-        }
-    }    public Optional<User> findByUsername(String username) {
-        try (Session session = sessionFactory.openSession()) {
-            var query = session.createQuery("FROM User WHERE username = :username", User.class);
-            query.setParameter("username", username);
-            return query.uniqueResultOptional();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Optional.empty();
-        }
-    }    public void update(User user) {
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            transaction = session.beginTransaction();
-            session.update(user);
-            transaction.commit();
-        } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-            }
-            e.printStackTrace();
-        }
-    }    public void deleteById(Long id) {
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            transaction = session.beginTransaction();
-            User user = session.get(User.class, id);
-            if (user != null) {
-                session.delete(user);
-            }
-            transaction.commit();
-        } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-            }
-            e.printStackTrace();
-        }
-    }
+    // Найти пользователя по имени пользователя
+    Optional<User> findByUsername(String username);
 
-    @SuppressWarnings("unchecked")
-    public List<User> findAllAdmins() {
-        try (Session session = sessionFactory.openSession()) {
-            return session.createQuery("from User where role = 'ADMIN'").list();
-        }
-    }
+    // Найти всех администраторов
+    List<User> findByRole(String role);
+    // Найти всех пользователей с ролью ADMIN
+    @Query("FROM User WHERE role = 'ADMIN'")
+    List<User> findAllAdmins();
+
+    // Удалить пользователя по ID (этот метод уже предоставляется JpaRepository)
+    void deleteById(Long id);
 
 }

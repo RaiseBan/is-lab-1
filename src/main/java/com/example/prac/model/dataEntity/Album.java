@@ -35,7 +35,7 @@ public class Album {
     @Column(name = "length", nullable = false)
     private Integer length;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE})
     @JoinColumn(name = "owner_id")
     @JsonBackReference
     private User owner;
