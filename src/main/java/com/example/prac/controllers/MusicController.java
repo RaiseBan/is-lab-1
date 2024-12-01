@@ -24,6 +24,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -115,7 +116,9 @@ public class MusicController {
             User currentUser = (User) authentication.getPrincipal();
 
             ImportHistoryDto result = importService.importMusicBandsFromFile(file, currentUser);
-
+            if (Objects.equals(result.getStatus(), "FAILED")){
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+            }
             return ResponseEntity.ok(result); // Успешный ответ с результатом импорта
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "FAILED", "message", e.getMessage()));

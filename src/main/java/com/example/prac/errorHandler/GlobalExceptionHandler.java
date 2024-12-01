@@ -1,7 +1,9 @@
 package com.example.prac.errorHandler;
 
+import com.example.prac.errorHandler.model.ApiError;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -32,6 +34,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleOtherExceptions(Exception ex) {
         Map<String, String> error = new HashMap<>();
+        ex.printStackTrace();
         error.put("message", ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -60,6 +63,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SQLException.class)
     public ResponseEntity<String> handleSQL(SQLException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body("wrong arguments");
+    }
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleUniqueConstraintViolation(DataIntegrityViolationException ex) {
+        String message = "Повторяющееся значение ключа. Возможно, объект с таким именем уже существует.";
+        String debugMessage = ex.getMostSpecificCause().getMessage(); // Полное сообщение исключения
+
+        ApiError apiError = new ApiError(HttpStatus.CONFLICT.value(), message, debugMessage);
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
     }
 
 

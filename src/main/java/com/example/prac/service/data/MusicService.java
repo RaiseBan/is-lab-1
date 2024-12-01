@@ -39,7 +39,7 @@ public class MusicService {
     private final MusicWebSocketHandler musicWebSocketHandler;
 
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public MusicBand saveMusicBand(MusicDTORequest musicDTORequest, User user) {
         try {
             MusicBand musicBand = new MusicBand();
@@ -104,7 +104,7 @@ public class MusicService {
 
 
 
-
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public List<MusicBand> getAllMusicBands() {
         try {
             return musicBandRepository.findAll();
@@ -112,7 +112,7 @@ public class MusicService {
             throw new RuntimeException("Failed to fetch all music bands", e);
         }
     }
-
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public MusicBand getMusicBandById(long id) {
         try {
             MusicBand musicBand = musicBandRepository.findById(id).orElseThrow(() -> new RuntimeException());
@@ -126,7 +126,7 @@ public class MusicService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.SERIALIZABLE)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.REPEATABLE_READ)
     public MusicBand updateMusicBand(MusicBand musicBand, MusicDTORequest musicDTORequest, User user) {
         try {
             if (musicBand == null) {
@@ -150,29 +150,35 @@ public class MusicService {
 
 
             Coordinates coordinates = musicDTORequest.getCoordinatesWrapper().getCoordinates();
+            Coordinates realCord = musicBand.getCoordinates();
+
             if (coordinates != null) {
-                coordinates.setOwner(user);
-                coordinatesRepository.save(coordinates);
-                musicBand.setCoordinates(coordinates);
+                realCord.setX(coordinates.getX());
+                realCord.setY(coordinates.getY());
+                coordinatesRepository.save(realCord);
+                musicBand.setCoordinates(realCord);
             }
 
 
             Album bestAlbum = musicDTORequest.getBestAlbumWrapper().getBestAlbum();
+            Album realAlbum = musicBand.getBestAlbum();
             if (bestAlbum != null) {
-                bestAlbum.setOwner(user);
-                albumRepository.save(bestAlbum);
+                realAlbum.setName(bestAlbum.getName());
+                realAlbum.setTracks(bestAlbum.getTracks());
+                realAlbum.setLength(bestAlbum.getLength());
+                albumRepository.save(realAlbum);
 
-                musicBand.setBestAlbum(bestAlbum);
+                musicBand.setBestAlbum(realAlbum);
             }
 
 
             Label label = musicDTORequest.getLabelWrapper().getLabel();
+            Label readLabel = musicBand.getLabel();
             if (label != null) {
+                readLabel.setName(label.getName());
+                labelRepository.save(readLabel);
 
-                label.setOwner(user);
-                labelRepository.save(label);
-
-                musicBand.setLabel(label);
+                musicBand.setLabel(readLabel);
             }
 
 
@@ -202,39 +208,24 @@ public class MusicService {
     }
 
 
-
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.REPEATABLE_READ)
     public void deleteMusicBandById(Long id) {
-        MusicBand musicBand = musicBandRepository.findById(id).orElseThrow(() -> new RuntimeException());
-
-        // Отвязываем зависимые объекты
-        if (musicBand.getCoordinates() != null) {
-            Coordinates coordinates = musicBand.getCoordinates();
-            musicBand.setCoordinates(null); // Отвязываем
-            coordinatesRepository.delete(coordinates); // Удаляем
-        }
-
-        if (musicBand.getBestAlbum() != null) {
-            Album album = musicBand.getBestAlbum();
-            musicBand.setBestAlbum(null); // Отвязываем
-            albumRepository.delete(album); // Удаляем
-        }
-
-        if (musicBand.getLabel() != null) {
-            Label label = musicBand.getLabel();
-            musicBand.setLabel(null); // Отвязываем
-            labelRepository.delete(label); // Удаляем
-        }
-
-        // Удаляем саму группу
-        musicBandRepository.delete(musicBand);
-
-        // Отправляем обновление по WebSocket
         try {
-            musicWebSocketHandler.sendUpdate("delete", id);
-        } catch (IOException e) {
-//            e.printStackTrace();
-            System.out.println("SDSD");
-            throw new RuntimeException(e);
+            MusicBand musicBand = musicBandRepository.findById(id).orElseThrow(() -> new RuntimeException());
+
+            musicBandRepository.delete(musicBand);
+
+            // Отправляем обновление по WebSocket
+            try {
+                System.out.println("delete");
+                musicWebSocketHandler.sendUpdate("delete", id);
+            } catch (IOException e) {
+                //            e.printStackTrace();
+                System.out.println("SDSD");
+                throw new RuntimeException(e);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
         }
     }
 

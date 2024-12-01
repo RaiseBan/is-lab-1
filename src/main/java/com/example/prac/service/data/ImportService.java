@@ -10,6 +10,8 @@ import com.example.prac.model.dataEntity.MusicBand;
 import com.example.prac.model.dataEntity.MusicGenre;
 import com.example.prac.model.info.ImportHistory;
 import com.example.prac.repository.info.ImportHistoryRepository;
+import com.example.prac.utils.DtoUtil;
+import com.example.prac.webSocket.MusicWebSocketHandler;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
@@ -20,12 +22,16 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -34,8 +40,9 @@ public class ImportService {
 
     private final ObjectMapper objectMapper;
     private final ImportHistoryRepository importHistoryRepository;
+    private final MusicWebSocketHandler musicWebSocketHandler;
     private final SessionFactory sessionFactory;
-
+//    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public ImportHistoryDto importMusicBandsFromFile(MultipartFile file, User user) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
@@ -49,14 +56,17 @@ public class ImportService {
         int successfulImports = 0;
         int totalObjects = musicDTOList.size();
         List<String> errorMessages = new ArrayList<>();
-
+        List<MusicBand> convertedMusicBands = new ArrayList<>();
+        MusicBand temp;
         try (Session session = sessionFactory.openSession()) {
             Transaction transaction = session.beginTransaction();
 
             try {
                 for (MusicDTORequest dto : musicDTOList) {
                     try {
-                        processSingleMusicBand(dto, user, session);
+
+                        temp = processSingleMusicBand(dto, user, session);
+                        convertedMusicBands.add(temp);
                         successfulImports++;
                     } catch (ConstraintViolationException e) {
                         errorMessages.add("Validation failed for DTO: " + dto + ". Error: " + e.getMessage());
@@ -81,15 +91,22 @@ public class ImportService {
         // Записываем историю импорта даже если транзакция была откатана
         String status = (successfulImports == totalObjects) ? "SUCCESS" : "FAILED";
         ImportHistory history = createImportHistory(totalObjects, successfulImports, user, status, errorMessages);
+        if (Objects.equals(history.getStatus(), "SUCCESS")){
+            for (MusicBand musicBand: convertedMusicBands){
+                musicWebSocketHandler.sendUpdate("create", DtoUtil.convertToResponse(musicBand));
+            }
+        }
+
 
         return ImportHistoryDto.fromEntity(history);
     }
 
-    private void processSingleMusicBand(MusicDTORequest dto, User user, Session session) {
+    private MusicBand processSingleMusicBand(MusicDTORequest dto, User user, Session session) {
         validateMusicDTO(dto);
 
         MusicBand musicBand = convertToEntity(dto, user, session);
         session.persist(musicBand);
+        return musicBand;
     }
 
     private ImportHistory createImportHistory(int totalObjects, int addedObjects, User user, String status, List<String> errorMessages) {
