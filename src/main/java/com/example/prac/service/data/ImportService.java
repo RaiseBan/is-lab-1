@@ -90,7 +90,12 @@ public class ImportService {
                 transaction.commit();
             } catch (Exception e) {
                 transaction.rollback();
-                minioService.deleteTempFile(uniqueFileName); // Откат изменений в MinIO
+                try {
+                    minioService.deleteTempFile(uniqueFileName); // Откат изменений в MinIO
+                }catch (Exception deleteEx){
+                    errorMessages.add("Error deleting temp file from MinIO: " + deleteEx.getMessage());
+                }
+
                 System.err.println("Transaction failed: " + e.getMessage());
             }
         }
