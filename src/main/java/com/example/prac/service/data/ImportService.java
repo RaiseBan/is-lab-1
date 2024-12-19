@@ -3,13 +3,10 @@ package com.example.prac.service.data;
 import com.example.prac.DTO.data.MusicDTORequest;
 import com.example.prac.DTO.info.ImportHistoryDto;
 import com.example.prac.model.authEntity.User;
-import com.example.prac.model.dataEntity.Album;
-import com.example.prac.model.dataEntity.Coordinates;
-import com.example.prac.model.dataEntity.Label;
-import com.example.prac.model.dataEntity.MusicBand;
-import com.example.prac.model.dataEntity.MusicGenre;
+import com.example.prac.model.dataEntity.*;
 import com.example.prac.model.info.ImportHistory;
 import com.example.prac.repository.info.ImportHistoryRepository;
+import com.example.prac.service.minio.MinIOService;
 import com.example.prac.utils.DtoUtil;
 import com.example.prac.webSocket.MusicWebSocketHandler;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -22,17 +19,12 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -42,11 +34,15 @@ public class ImportService {
     private final ImportHistoryRepository importHistoryRepository;
     private final MusicWebSocketHandler musicWebSocketHandler;
     private final SessionFactory sessionFactory;
-//    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
-    public ImportHistoryDto importMusicBandsFromFile(MultipartFile file, User user) throws IOException {
+    private final MinIOService minioService;
+
+    public ImportHistoryDto importMusicBandsFromFile(MultipartFile file, User user) throws Exception {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
+
+        String originalFilename = file.getOriginalFilename();
+        String uniqueFileName = UUID.randomUUID() + "_" + originalFilename;
 
         List<MusicDTORequest> musicDTOList = objectMapper.readValue(
                 file.getInputStream(),
@@ -58,13 +54,21 @@ public class ImportService {
         List<String> errorMessages = new ArrayList<>();
         List<MusicBand> convertedMusicBands = new ArrayList<>();
         MusicBand temp;
+
         try (Session session = sessionFactory.openSession()) {
             Transaction transaction = session.beginTransaction();
 
             try {
+                // Загружаем файл в MinIO
+                minioService.uploadTempFile(uniqueFileName, file.getInputStream(), file.getContentType());
+
+                // Обрабатываем DTO объектов
                 for (MusicDTORequest dto : musicDTOList) {
                     try {
-
+                        System.out.println("before db section");
+                        if (dto.getDescription().equals("FAIL_RUNTIME")){
+                            throw new RuntimeException("TEST RUNTIME ERROR...");
+                        }
                         temp = processSingleMusicBand(dto, user, session);
                         convertedMusicBands.add(temp);
                         successfulImports++;
@@ -80,23 +84,35 @@ public class ImportService {
                     }
                 }
 
+                // Подтверждаем файл в MinIO, если транзакция успешна
+                minioService.commitFile(uniqueFileName);
+
                 transaction.commit();
             } catch (Exception e) {
                 transaction.rollback();
-                // После отката продолжаем процесс для записи истории
+                minioService.deleteTempFile(uniqueFileName); // Откат изменений в MinIO
                 System.err.println("Transaction failed: " + e.getMessage());
             }
         }
 
-        // Записываем историю импорта даже если транзакция была откатана
+        // Записываем историю импорта, даже если транзакция была откатана
         String status = (successfulImports == totalObjects) ? "SUCCESS" : "FAILED";
-        ImportHistory history = createImportHistory(totalObjects, successfulImports, user, status, errorMessages);
-        if (Objects.equals(history.getStatus(), "SUCCESS")){
-            for (MusicBand musicBand: convertedMusicBands){
+        ImportHistory history = createImportHistory(
+                totalObjects,
+                successfulImports,
+                user,
+                status,
+                errorMessages,
+                uniqueFileName,
+                originalFilename
+        );
+
+        // Отправляем обновления в WebSocket для успешных записей
+        if ("SUCCESS".equals(history.getStatus())) {
+            for (MusicBand musicBand : convertedMusicBands) {
                 musicWebSocketHandler.sendUpdate("create", DtoUtil.convertToResponse(musicBand));
             }
         }
-
 
         return ImportHistoryDto.fromEntity(history);
     }
@@ -104,18 +120,72 @@ public class ImportService {
     private MusicBand processSingleMusicBand(MusicDTORequest dto, User user, Session session) {
         validateMusicDTO(dto);
 
-        MusicBand musicBand = convertToEntity(dto, user, session);
+        MusicBand musicBand = new MusicBand();
+        musicBand.setName(dto.getName());
+        musicBand.setOwner(user);
+        musicBand.setCreatedBy(user);
+
+        // Сохранение координат
+        Coordinates coordinates = dto.getCoordinatesWrapper().getCoordinates();
+        if (coordinates != null) {
+            coordinates.setOwner(user);
+            session.persist(coordinates);
+            musicBand.setCoordinates(coordinates);
+        } else {
+            throw new IllegalArgumentException("Coordinates cannot be null");
+        }
+
+        // Сохранение альбома
+        Album album = dto.getBestAlbumWrapper().getBestAlbum();
+        if (album != null) {
+            album.setOwner(user);
+            session.persist(album);
+            musicBand.setBestAlbum(album);
+        } else {
+            throw new IllegalArgumentException("Best album cannot be null");
+        }
+
+        // Сохранение лейбла
+        Label label = dto.getLabelWrapper().getLabel();
+        if (label != null) {
+            label.setOwner(user);
+            session.persist(label);
+            musicBand.setLabel(label);
+        } else {
+            throw new IllegalArgumentException("Label cannot be null");
+        }
+
+        // Установка остальных полей
+        musicBand.setGenre(MusicGenre.valueOf(dto.getGenre()));
+        musicBand.setNumberOfParticipants(dto.getNumberOfParticipants());
+        musicBand.setSinglesCount(dto.getSinglesCount());
+        musicBand.setDescription(dto.getDescription());
+        musicBand.setAlbumsCount(dto.getAlbumsCount());
+        musicBand.setEstablishmentDate(ZonedDateTime.parse(dto.getEstablishmentDate()));
+
+        if ("SIMULATE_DB_FAILURE".equals(dto.getName())){
+            throw new RuntimeException("SIMULATE_DB_FAILURE");
+        }
         session.persist(musicBand);
         return musicBand;
     }
 
-    private ImportHistory createImportHistory(int totalObjects, int addedObjects, User user, String status, List<String> errorMessages) {
+    private ImportHistory createImportHistory(
+            int totalObjects,
+            int addedObjects,
+            User user,
+            String status,
+            List<String> errorMessages,
+            String fileName,
+            String originalFileName
+    ) {
         ImportHistory history = new ImportHistory();
         history.setStatus(status);
         history.setUser(user);
         history.setTotalObjectsCount(totalObjects);
         history.setAddedObjectsCount(addedObjects);
-//        history.setErrorMessages(String.join("; ", errorMessages)); // Добавляем сообщения об ошибках
+        history.setFileName(fileName);
+        history.setOriginalFileName(originalFileName);
         return importHistoryRepository.save(history);
     }
 
@@ -127,57 +197,6 @@ public class ImportService {
             throw new ConstraintViolationException("Validation failed", violations);
         }
     }
-
-    private MusicBand convertToEntity(MusicDTORequest dto, User user, Session session) {
-        MusicBand musicBand = new MusicBand();
-
-        // Загрузить пользователя из текущей сессии
-        User managedUser = session.get(User.class, user.getId());
-        if (managedUser == null) {
-            throw new IllegalArgumentException("User not found in the database.");
-        }
-        musicBand.setOwner(managedUser);
-
-        // Сохранение координат
-        Coordinates coordinates = dto.getCoordinatesWrapper().getCoordinates();
-        if (coordinates != null) {
-            coordinates.setOwner(managedUser);
-            session.persist(coordinates);
-            musicBand.setCoordinates(coordinates);
-        } else {
-            throw new IllegalArgumentException("Coordinates cannot be null");
-        }
-
-        // Сохранение альбома
-        Album album = dto.getBestAlbumWrapper().getBestAlbum();
-        if (album != null) {
-            album.setOwner(managedUser);
-            session.persist(album);
-            musicBand.setBestAlbum(album);
-        } else {
-            throw new IllegalArgumentException("Best album cannot be null");
-        }
-
-        // Сохранение лейбла
-        Label label = dto.getLabelWrapper().getLabel();
-        if (label != null) {
-            label.setOwner(managedUser);
-            session.persist(label);
-            musicBand.setLabel(label);
-        } else {
-            throw new IllegalArgumentException("Label cannot be null");
-        }
-
-        // Установка остальных полей
-        musicBand.setName(dto.getName());
-        musicBand.setGenre(MusicGenre.valueOf(dto.getGenre()));
-        musicBand.setNumberOfParticipants(dto.getNumberOfParticipants());
-        musicBand.setSinglesCount(dto.getSinglesCount());
-        musicBand.setDescription(dto.getDescription());
-        musicBand.setAlbumsCount(dto.getAlbumsCount());
-        musicBand.setEstablishmentDate(ZonedDateTime.parse(dto.getEstablishmentDate()));
-        musicBand.setCreatedBy(managedUser);
-
-        return musicBand;
-    }
 }
+
+
